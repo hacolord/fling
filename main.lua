@@ -8,17 +8,17 @@ local playerGui = localPlayer:WaitForChild("PlayerGui")
 local Camera = workspace.CurrentCamera
 
 --======================================================================
--- 1. KHỞI TẠO GIAO DIỆN (ĐÃ THU NHỎ GỌN - GIỮ NGUYÊN MINI GUI)
+-- 1. KHỞI TẠO GIAO DIỆN (ĐÃ TÁCH BIỆT CÁC NÚT RIÊNG BIỆT)
 --======================================================================
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TargetFlySystemV19_Compact"
+screenGui.Name = "TargetFlySystemV20_Fixed"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 250, 0, 410) -- Thu nhỏ khung chính (Gốc: 300x455)
-mainFrame.Position = UDim2.new(0.5, -125, 0.5, -205)
+mainFrame.Size = UDim2.new(0, 250, 0, 485) 
+mainFrame.Position = UDim2.new(0.5, -125, 0.5, -242)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainFrame.BorderSizePixel = 0
 mainFrame.ClipsDescendants = true 
@@ -48,7 +48,7 @@ local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(0, 160, 0, 35)
 titleLabel.Position = UDim2.new(0, 15, 0, 5)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "TRACKER V19"
+titleLabel.Text = "TRACKER V20.2 FIX"
 titleLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
 titleLabel.Font = Enum.Font.SourceSansBold
 titleLabel.TextSize = 15
@@ -57,7 +57,7 @@ titleLabel.Parent = mainFrame
 
 local playerListFrame = Instance.new("ScrollingFrame")
 playerListFrame.Name = "PlayerList"
-playerListFrame.Size = UDim2.new(0, 210, 0, 100) -- Thu gọn danh sách người chơi
+playerListFrame.Size = UDim2.new(0, 210, 0, 100) 
 playerListFrame.Position = UDim2.new(0, 20, 0, 45)
 playerListFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 playerListFrame.BorderSizePixel = 0
@@ -77,7 +77,7 @@ listLayout.Parent = playerListFrame
 
 local speedInput = Instance.new("TextBox")
 speedInput.Name = "SpeedInput"
-speedInput.Size = UDim2.new(0, 210, 0, 32) -- Thu gọn ô nhập tốc độ
+speedInput.Size = UDim2.new(0, 210, 0, 32) 
 speedInput.Position = UDim2.new(0, 20, 0, 152)
 speedInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 speedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -94,11 +94,11 @@ speedCorner.Parent = speedInput
 
 local distanceInput = Instance.new("TextBox")
 distanceInput.Name = "DistanceInput"
-distanceInput.Size = UDim2.new(0, 210, 0, 32) -- Thu gọn ô nhập khoảng cách ngang
+distanceInput.Size = UDim2.new(0, 210, 0, 32) 
 distanceInput.Position = UDim2.new(0, 20, 0, 191)
 distanceInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 distanceInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-distanceInput.PlaceholderText = "Khoảng cách ngang (Orbit/Back)..."
+distanceInput.PlaceholderText = "Khoảng cách ngang..."
 distanceInput.Text = "4.5" 
 distanceInput.Font = Enum.Font.SourceSans
 distanceInput.TextSize = 14
@@ -111,11 +111,11 @@ distCorner.Parent = distanceInput
 
 local heightInput = Instance.new("TextBox")
 heightInput.Name = "HeightInput"
-heightInput.Size = UDim2.new(0, 210, 0, 32) -- Thu gọn ô nhập khoảng cách dọc
+heightInput.Size = UDim2.new(0, 210, 0, 32) 
 heightInput.Position = UDim2.new(0, 20, 0, 230)
 heightInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 heightInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-heightInput.PlaceholderText = "Khoảng cách dọc (Trời/Đất)..."
+heightInput.PlaceholderText = "Khoảng cách dọc..."
 heightInput.Text = "8" 
 heightInput.Font = Enum.Font.SourceSans
 heightInput.TextSize = 14
@@ -126,11 +126,27 @@ local heightCorner = Instance.new("UICorner")
 heightCorner.CornerRadius = UDim.new(0, 6)
 heightCorner.Parent = heightInput
 
--- NÚT CHỌN ĐỘ CAO VÒNG LẶP 3 BƯỚC (RÚT NGẮN CHIỀU NGANG)
+local flySpeedInput = Instance.new("TextBox")
+flySpeedInput.Name = "FlySpeedInput"
+flySpeedInput.Size = UDim2.new(0, 210, 0, 32) 
+flySpeedInput.Position = UDim2.new(0, 20, 0, 269)
+flySpeedInput.BackgroundColor3 = Color3.fromRGB(40, 55, 50)
+flySpeedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+flySpeedInput.PlaceholderText = "Tốc độ bay tiếp cận (Chase)..."
+flySpeedInput.Text = "150" 
+flySpeedInput.Font = Enum.Font.SourceSans
+flySpeedInput.TextSize = 14
+flySpeedInput.ClearTextOnFocus = false
+flySpeedInput.Parent = mainFrame
+
+local fsCorner = Instance.new("UICorner")
+fsCorner.CornerRadius = UDim.new(0, 6)
+fsCorner.Parent = flySpeedInput
+
 local heightModeBtn = Instance.new("TextButton")
 heightModeBtn.Name = "HeightModeBtn"
 heightModeBtn.Size = UDim2.new(0, 102, 0, 32)
-heightModeBtn.Position = UDim2.new(0, 20, 0, 269)
+heightModeBtn.Position = UDim2.new(0, 20, 0, 308)
 heightModeBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 150)
 heightModeBtn.Text = "MODE: TRÊN TRỜI"
 heightModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -142,11 +158,10 @@ local hmCorner = Instance.new("UICorner")
 hmCorner.CornerRadius = UDim.new(0, 6)
 hmCorner.Parent = heightModeBtn
 
--- NÚT CHỌN HƯỚNG VÒNG LẶP 3 BƯỚC (RÚT NGẮN CHIỀU NGANG)
 local directionModeBtn = Instance.new("TextButton")
 directionModeBtn.Name = "DirectionModeBtn"
 directionModeBtn.Size = UDim2.new(0, 102, 0, 32)
-directionModeBtn.Position = UDim2.new(0, 128, 0, 269)
+directionModeBtn.Position = UDim2.new(0, 128, 0, 308)
 directionModeBtn.BackgroundColor3 = Color3.fromRGB(150, 70, 0)
 directionModeBtn.Text = "ORBIT (XOAY)"
 directionModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -158,10 +173,25 @@ local dmCorner = Instance.new("UICorner")
 dmCorner.CornerRadius = UDim.new(0, 6)
 dmCorner.Parent = directionModeBtn
 
+local netModeBtn = Instance.new("TextButton")
+netModeBtn.Name = "NetModeBtn"
+netModeBtn.Size = UDim2.new(0, 210, 0, 32)
+netModeBtn.Position = UDim2.new(0, 20, 0, 347)
+netModeBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+netModeBtn.Text = "NET: NORMAL"
+netModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+netModeBtn.Font = Enum.Font.SourceSansBold
+netModeBtn.TextSize = 12
+netModeBtn.Parent = mainFrame
+
+local netCorner = Instance.new("UICorner")
+netCorner.CornerRadius = UDim.new(0, 6)
+netCorner.Parent = netModeBtn
+
 local tanSatBtn = Instance.new("TextButton")
 tanSatBtn.Name = "TanSatBtn"
 tanSatBtn.Size = UDim2.new(0, 210, 0, 32)
-tanSatBtn.Position = UDim2.new(0, 20, 0, 308)
+tanSatBtn.Position = UDim2.new(0, 20, 0, 386)
 tanSatBtn.BackgroundColor3 = Color3.fromRGB(60, 20, 20)
 tanSatBtn.Text = "CHẾ ĐỘ TÀN SÁT: OFF"
 tanSatBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
@@ -175,7 +205,7 @@ tsCorner.Parent = tanSatBtn
 
 local targetStatusLabel = Instance.new("TextLabel")
 targetStatusLabel.Size = UDim2.new(0, 210, 0, 25)
-targetStatusLabel.Position = UDim2.new(0, 20, 0, 347)
+targetStatusLabel.Position = UDim2.new(0, 20, 0, 425)
 targetStatusLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 targetStatusLabel.Text = "Mục tiêu: Chưa chọn"
 targetStatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -187,7 +217,6 @@ local statusCorner = Instance.new("UICorner")
 statusCorner.CornerRadius = UDim.new(0, 4)
 statusCorner.Parent = targetStatusLabel
 
--- ⚠️ GIỮ NGUYÊN HOÀN TOÀN KÍCH THƯỚC MINI GUI WIDGET THEO YÊU CẦU
 local widgetFrame = Instance.new("Frame")
 widgetFrame.Name = "FlyWidget"
 widgetFrame.Size = UDim2.new(0, 50, 0, 50) 
@@ -216,18 +245,25 @@ actionCorner.CornerRadius = UDim.new(0, 10)
 actionCorner.Parent = actionBtn
 
 --======================================================================
--- 2. ĐỘNG CƠ TÍNH TOÁN KHOẢNG CÁCH BIÊN ĐỘ ĐA CHIỀU (GIỮ NGUYÊN LOGIC)
+-- 2. ĐỘNG CƠ TÍNH TOÁN LOGIC
 --======================================================================
 local selectedTargetPlayer = nil  
 local isTrackingActive = false
 local selectedHeightMode = 1 
-local selectedDirMode = 1    
+local selectedDirMode = 1     
+local selectedNetMode = 1     -- 1: Normal, 2: Auto-Reset (Vàng), 3: Smart Chase (Trắng), 4: Hybrid (Cam)
 local isTanSatActive = false 
 
 local flyConnection = nil         
 local noclipConnection = nil
 local tanSatConnection = nil
 local currentAngle = 0 
+
+local modeVangTimer = 0
+local isTemporarilySleeping = false
+local sleepTimer = 0
+
+local PREDICTION_FACTOR = 0.12 
 
 local function getClosestPlayer()
 	local myChar = localPlayer.Character
@@ -260,26 +296,27 @@ local function stopFlying()
 	if flyConnection then flyConnection:Disconnect() flyConnection = nil end
 	if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
 	
+	settings().Network.IncomingReplicationLag = 0
+	isTemporarilySleeping = false
+	modeVangTimer = 0
+	
 	Camera.CameraType = Enum.CameraType.Custom
 	local myHum = localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid")
 	if myHum then Camera.CameraSubject = myHum end
 	
 	local char = localPlayer.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if root then
 		root.AssemblyLinearVelocity = Vector3.new(0,0,0)
 		root.AssemblyAngularVelocity = Vector3.new(0,0,0)
 	end
+	if hum then
+		hum:ChangeState(Enum.HumanoidStateType.Running)
+	end
 end
 
 local function startFlying()
-	if selectedHeightMode == 3 and selectedDirMode == 3 then
-		targetStatusLabel.Text = "LỖI: Chưa chọn chế độ nào!"
-		targetStatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-		stopFlying()
-		return
-	end
-
 	if not selectedTargetPlayer or not selectedTargetPlayer.Parent then 
 		targetStatusLabel.Text = "LỖI: Chưa chọn mục tiêu!"
 		stopFlying()
@@ -295,6 +332,8 @@ local function startFlying()
 	local targetHum = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
 	
 	isTrackingActive = true
+	modeVangTimer = 0
+	isTemporarilySleeping = false
 	
 	if selectedHeightMode == 1 then
 		actionBtn.Text = "TRACK\nSKY"
@@ -322,6 +361,7 @@ local function startFlying()
 	flyConnection = RunService.RenderStepped:Connect(function(deltaTime)
 		local myChar = localPlayer.Character
 		local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+		local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
 		local tChar = selectedTargetPlayer.Character
 		local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
 		
@@ -330,9 +370,28 @@ local function startFlying()
 			return
 		end
 		
-		myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-		myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-		
+		-- ⏱️ LOGIC MẠNG VÀNG / CAM (AUTO-RESET 3S - NGHỈ 0.25S)
+		if selectedNetMode == 2 or selectedNetMode == 4 then
+			if isTemporarilySleeping then
+				sleepTimer = sleepTimer + deltaTime
+				if myHum then myHum:ChangeState(Enum.HumanoidStateType.Running) end
+				settings().Network.IncomingReplicationLag = 0
+				if sleepTimer >= 0.25 then
+					isTemporarilySleeping = false
+					modeVangTimer = 0
+				else
+					return 
+				end
+			else
+				modeVangTimer = modeVangTimer + deltaTime
+				if modeVangTimer >= 3.0 then
+					isTemporarilySleeping = true
+					sleepTimer = 0
+					return
+				end
+			end
+		end
+
 		local horizontalDist = tonumber(distanceInput.Text) or 4.5
 		local verticalDist = 0
 		if selectedHeightMode == 1 then
@@ -341,28 +400,50 @@ local function startFlying()
 			verticalDist = -math.abs(tonumber(heightInput.Text) or 8)
 		end
 		
-		local userSpeed = tonumber(speedInput.Text) or 120
-		local nextCFramePosition = Vector3.new(0,0,0)
+		local currentDistance = (myRoot.Position - tRoot.Position).Magnitude
+		local isUsingChaseMode = (selectedNetMode == 3 or selectedNetMode == 4)
 		
-		if selectedDirMode == 1 then
-			local angularVelocity = userSpeed / horizontalDist
-			currentAngle = currentAngle + (angularVelocity * deltaTime)
+		-- 🛠️ LOGIC MẠNG TRẮNG / CAM (SMART CHASE TRUY ĐUỔI VẬN TỐC KHI Ở XA)
+		if isUsingChaseMode and currentDistance > 10 then
+			if myHum then myHum:ChangeState(Enum.HumanoidStateType.Running) end
+			settings().Network.IncomingReplicationLag = 0
 			
-			local targetX = tRoot.Position.X + (math.sin(currentAngle) * horizontalDist)
-			local targetZ = tRoot.Position.Z + (math.cos(currentAngle) * horizontalDist)
-			local targetY = tRoot.Position.Y + verticalDist 
+			local chaseSpeed = tonumber(flySpeedInput.Text) or 150
+			local targetTargetPos = tRoot.Position + Vector3.new(0, verticalDist, 0)
+			local direction = (targetTargetPos - myRoot.Position).Unit
 			
-			nextCFramePosition = Vector3.new(targetX, targetY, targetZ)
-		elseif selectedDirMode == 2 then
-			local backVector = -tRoot.CFrame.LookVector
-			nextCFramePosition = tRoot.Position + (backVector * horizontalDist) + Vector3.new(0, verticalDist, 0)
+			myRoot.AssemblyLinearVelocity = direction * chaseSpeed
+			myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+			myRoot.CFrame = CFrame.new(myRoot.Position, tRoot.Position)
 		else
-			local dirVector = (myRoot.Position - tRoot.Position).Unit
-			if dirVector.Magnitude == 0 or tostring(dirVector.X) == "-nan(ind)" then dirVector = Vector3.new(0,0,1) end
-			nextCFramePosition = tRoot.Position + (dirVector * horizontalDist) + Vector3.new(0, verticalDist, 0)
+			-- TRẠNG THÁI ÁP SÁT GẦN HOẶC CHẾ ĐỘ THƯỜNG: KHÓA CFRAME ĐỂ TẤN CÔNG
+			if myHum then myHum:ChangeState(Enum.HumanoidStateType.Physics) end
+			myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+			myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+			
+			settings().Network.IncomingReplicationLag = 0.12
+			
+			local enemyVelocity = tRoot.AssemblyLinearVelocity
+			local targetPositionBase = tRoot.Position + (enemyVelocity * PREDICTION_FACTOR)
+			local userSpeed = tonumber(speedInput.Text) or 120
+			local nextCFramePosition = Vector3.new(0,0,0)
+			
+			if selectedDirMode == 1 then
+				local angularVelocity = userSpeed / horizontalDist
+				currentAngle = currentAngle + (angularVelocity * deltaTime)
+				
+				local targetX = targetPositionBase.X + (math.sin(currentAngle) * horizontalDist)
+				local targetZ = targetPositionBase.Z + (math.cos(currentAngle) * horizontalDist)
+				local targetY = targetPositionBase.Y + verticalDist 
+				
+				nextCFramePosition = Vector3.new(targetX, targetY, targetZ)
+			elseif selectedDirMode == 2 then
+				local backVector = -tRoot.CFrame.LookVector
+				nextCFramePosition = targetPositionBase + (backVector * horizontalDist) + Vector3.new(0, verticalDist, 0)
+			end
+			
+			myRoot.CFrame = CFrame.new(nextCFramePosition, tRoot.Position)
 		end
-		
-		myRoot.CFrame = CFrame.new(nextCFramePosition, tRoot.Position)
 	end)
 	
 	if not noclipConnection then
@@ -376,6 +457,47 @@ local function startFlying()
 		end)
 	end
 end
+
+--======================================================================
+-- ĐIỀU KHIỂN SỰ KIỆN NÚT BẤM
+--======================================================================
+netModeBtn.MouseButton1Click:Connect(function()
+	if selectedNetMode == 1 then
+		selectedNetMode = 2
+		netModeBtn.Text = "NET: AUTO-RESET"
+		netModeBtn.BackgroundColor3 = Color3.fromRGB(200, 160, 0) 
+		netModeBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+	elseif selectedNetMode == 2 then
+		selectedNetMode = 3
+		netModeBtn.Text = "NET: SMART CHASE"
+		netModeBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255) 
+		netModeBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+	elseif selectedNetMode == 3 then
+		selectedNetMode = 4
+		netModeBtn.Text = "NET: HYBRID BOTH"
+		netModeBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 0) 
+		netModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	else
+		selectedNetMode = 1
+		netModeBtn.Text = "NET: NORMAL"
+		netModeBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 55) 
+		netModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	end
+	if isTrackingActive then startFlying() end
+end)
+
+directionModeBtn.MouseButton1Click:Connect(function()
+	if selectedDirMode == 1 then
+		selectedDirMode = 2
+		directionModeBtn.Text = "BACKSTAB (SAU)"
+		directionModeBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+	else
+		selectedDirMode = 1
+		directionModeBtn.Text = "ORBIT (XOAY)"
+		directionModeBtn.BackgroundColor3 = Color3.fromRGB(150, 70, 0)
+	end
+	if isTrackingActive then startFlying() end
+end)
 
 heightModeBtn.MouseButton1Click:Connect(function()
 	if selectedHeightMode == 1 then
@@ -391,38 +513,7 @@ heightModeBtn.MouseButton1Click:Connect(function()
 		heightModeBtn.Text = "MODE: TRÊN TRỜI"
 		heightModeBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 150)
 	end
-	
-	if selectedHeightMode == 3 and selectedDirMode == 3 and isTrackingActive then
-		stopFlying()
-		targetStatusLabel.Text = "Đã dừng Track (OFF)"
-		targetStatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-	elseif isTrackingActive then 
-		startFlying() 
-	end
-end)
-
-directionModeBtn.MouseButton1Click:Connect(function()
-	if selectedDirMode == 1 then
-		selectedDirMode = 2
-		directionModeBtn.Text = "BACKSTAB (SAU)"
-		directionModeBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-	elseif selectedDirMode == 2 then
-		selectedDirMode = 3
-		directionModeBtn.Text = "ORBIT / BACK (OFF)"
-		directionModeBtn.BackgroundColor3 = Color3.fromRGB(75, 75, 75)
-	else
-		selectedDirMode = 1
-		directionModeBtn.Text = "ORBIT (XOAY)"
-		directionModeBtn.BackgroundColor3 = Color3.fromRGB(150, 70, 0)
-	end
-	
-	if selectedHeightMode == 3 and selectedDirMode == 3 and isTrackingActive then
-		stopFlying()
-		targetStatusLabel.Text = "Đã dừng Track (OFF)"
-		targetStatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-	elseif isTrackingActive then 
-		startFlying() 
-	end
+	if isTrackingActive then startFlying() end
 end)
 
 tanSatConnection = RunService.Heartbeat:Connect(function()
@@ -458,8 +549,6 @@ tanSatBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
---======================================================================
--- 3. LOGIC QUÉT DANH SÁCH NGƯỜI CHƠI
 --======================================================================
 local function refreshPlayerList()
 	for _, child in pairs(playerListFrame:GetChildren()) do
@@ -503,8 +592,6 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 refreshPlayerList()
 
---======================================================================
--- 4. HỆ THỐNG KÉO THẢ GHI NHỚ TOẠ ĐỘ TUYỆT ĐỐI (ĐÃ CẬP NHẬT THEO KÍCH THƯỚC MỚI)
 --======================================================================
 local isDraggingWidget = false
 local lastSavedPosition = mainFrame.Position 
@@ -556,8 +643,6 @@ actionBtn.MouseButton1Up:Connect(function()
 end)
 
 --======================================================================
--- 5. THU NHỎ / PHÓNG TO GỌN GÀNG KHÔNG BÌ NHẢY VỊ TRÍ
---======================================================================
 local isFull = true
 local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
@@ -571,14 +656,16 @@ toggleBtn.MouseButton1Click:Connect(function()
 		speedInput.Visible = true
 		distanceInput.Visible = true
 		heightInput.Visible = true
+		flySpeedInput.Visible = true
 		heightModeBtn.Visible = true
 		directionModeBtn.Visible = true
+		netModeBtn.Visible = true
 		tanSatBtn.Visible = true
 		targetStatusLabel.Visible = true
 		titleLabel.Visible = true
 		
 		TweenService:Create(mainFrame, tweenInfo, {
-			Size = UDim2.new(0, 250, 0, 410), -- Phóng to về kích thước gọn gàng mới
+			Size = UDim2.new(0, 250, 0, 485), 
 			Position = lastSavedPosition 
 		}):Play()
 	else
@@ -591,14 +678,16 @@ toggleBtn.MouseButton1Click:Connect(function()
 		speedInput.Visible = false
 		distanceInput.Visible = false
 		heightInput.Visible = false
+		flySpeedInput.Visible = false
 		heightModeBtn.Visible = false
 		directionModeBtn.Visible = false
+		netModeBtn.Visible = false
 		tanSatBtn.Visible = false
 		targetStatusLabel.Visible = false
 		titleLabel.Visible = false
 		
 		TweenService:Create(mainFrame, tweenInfo, {
-			Size = UDim2.new(0, 42, 0, 42) -- Nút thu nhỏ gọn gàng hơn
+			Size = UDim2.new(0, 42, 0, 42) 
 		}):Play()
 	end
 end)
