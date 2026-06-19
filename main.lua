@@ -250,9 +250,12 @@ actionCorner.Parent = actionBtn
 local selectedTargetPlayer = nil  
 local isTrackingActive = false
 local selectedHeightMode = 1 
-local selectedDirMode = 1     
-local selectedNetMode = 1     -- 1: Normal, 2: Auto-Reset (Vàng), 3: Smart Chase (Trắng), 4: Hybrid (Cam)
+local selectedDirMode = 1     -- 1: Orbit, 2: Backstab, 3: Off
 local isTanSatActive = false 
+
+local pinnedPlayers = {}      -- Bảng lưu trữ trạng thái ghim đỏ {[Player] = true}
+local pinnedOrder = {}        -- Danh sách thứ tự ghim để chạy vòng lặp
+local currentPinnedIndex = 1  -- Con trỏ định vị người chơi đang bị target trong list ghim
 
 local flyConnection = nil         
 local noclipConnection = nil
@@ -264,6 +267,29 @@ local isTemporarilySleeping = false
 local sleepTimer = 0
 
 local PREDICTION_FACTOR = 0.12 
+
+-- Hàm kiểm tra xem danh sách ghim đỏ có ai hợp lệ (còn online) không
+local function hasPinnedPlayers()
+	for p, _ in pairs(pinnedPlayers) do
+		if p and p.Parent == Players then
+			return true
+		end
+	end
+	return false
+end
+
+-- Hàm cập nhật mảng thứ tự ghim để đồng bộ hóa vòng lặp
+local function updatePinnedOrder()
+	pinnedOrder = {}
+	for p, _ in pairs(pinnedPlayers) do
+		if p and p.Parent == Players then
+			table.insert(pinnedOrder, p)
+		end
+	end
+	if currentPinnedIndex > #pinnedOrder then
+		currentPinnedIndex = 1
+	end
+end
 
 local function getClosestPlayer()
 	local myChar = localPlayer.Character
@@ -362,11 +388,68 @@ local function startFlying()
 		local myChar = localPlayer.Character
 		local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 		local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
-		local tChar = selectedTargetPlayer.Character
+		
+		-- KIỂM TRA ĐIỀU KIỆN XOAY VÒNG GHIM ĐỎ TRƯỚC
+		if hasPinnedPlayers() then
+			local currentTarget = pinnedOrder[currentPinnedIndex]
+			
+			-- Kiểm tra xem mục tiêu hiện tại hợp lệ và đang sống không
+			local isValidAndAlive = false
+			if currentTarget and currentTarget.Parent == Players then
+				local cChar = currentTarget.Character
+				local cHum = cChar and cChar:FindFirstChildOfClass("Humanoid")
+				if cHum and cHum.Health > 0 then
+					isValidAndAlive = true
+				end
+			end
+			
+			if not isValidAndAlive then
+				-- Nếu mục tiêu chết/không hợp lệ, tìm kiếm người kế tiếp trong danh sách ghim đang sống
+				local foundNext = false
+				local startIndex = currentPinnedIndex
+				for i = 1, #pinnedOrder do
+					currentPinnedIndex = currentPinnedIndex + 1
+					if currentPinnedIndex > #pinnedOrder then currentPinnedIndex = 1 end
+					
+					local nextTarget = pinnedOrder[currentPinnedIndex]
+					if nextTarget and nextTarget.Parent == Players then
+						local nChar = nextTarget.Character
+						local nHum = nChar and nChar:FindFirstChildOfClass("Humanoid")
+						if nHum and nHum.Health > 0 then
+							selectedTargetPlayer = nextTarget
+							targetStatusLabel.Text = "Ghim: " .. nextTarget.Name
+							targetStatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+							if nHum then Camera.CameraSubject = nHum end
+							foundNext = true
+							break
+						end
+					end
+					if currentPinnedIndex == startIndex then break end
+				end
+				
+				-- Nếu tất cả mục tiêu ghim đều đang chết, tạm thời đứng yên không track
+				if not foundNext then
+					targetStatusLabel.Text = "Ghim: Chờ mục tiêu hồi sinh..."
+					targetStatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+					if myRoot then
+						myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+						myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+					end
+					return
+				end
+			else
+				-- Nếu mục tiêu hiện tại vẫn ổn định, gán cứng vào selectedTargetPlayer
+				selectedTargetPlayer = currentTarget
+				targetStatusLabel.Text = "Ghim: " .. currentTarget.Name
+				targetStatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+			end
+		end
+		
+		local tChar = selectedTargetPlayer and selectedTargetPlayer.Character
 		local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
 		
 		if not myRoot or not tRoot then
-			if not isTanSatActive then stopFlying() end
+			if not isTanSatActive and not hasPinnedPlayers() then stopFlying() end
 			return
 		end
 		
@@ -440,6 +523,8 @@ local function startFlying()
 			elseif selectedDirMode == 2 then
 				local backVector = -tRoot.CFrame.LookVector
 				nextCFramePosition = targetPositionBase + (backVector * horizontalDist) + Vector3.new(0, verticalDist, 0)
+			else
+				nextCFramePosition = targetPositionBase + Vector3.new(0, verticalDist, 0)
 			end
 			
 			myRoot.CFrame = CFrame.new(nextCFramePosition, tRoot.Position)
@@ -491,6 +576,10 @@ directionModeBtn.MouseButton1Click:Connect(function()
 		selectedDirMode = 2
 		directionModeBtn.Text = "BACKSTAB (SAU)"
 		directionModeBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+	elseif selectedDirMode == 2 then
+		selectedDirMode = 3
+		directionModeBtn.Text = "DIR: OFF"
+		directionModeBtn.BackgroundColor3 = Color3.fromRGB(75, 75, 75)
 	else
 		selectedDirMode = 1
 		directionModeBtn.Text = "ORBIT (XOAY)"
@@ -517,7 +606,8 @@ heightModeBtn.MouseButton1Click:Connect(function()
 end)
 
 tanSatConnection = RunService.Heartbeat:Connect(function()
-	if isTanSatActive and isTrackingActive then
+	-- VÔ HIỆU HÓA TÀN SÁT KHI ĐANG CÓ NGƯỜI BỊ GHIM ĐỎ
+	if isTanSatActive and isTrackingActive and not hasPinnedPlayers() then
 		local tChar = selectedTargetPlayer and selectedTargetPlayer.Character
 		local tHum = tChar and tChar:FindFirstChildOfClass("Humanoid")
 		if not selectedTargetPlayer or not tHum or tHum.Health <= 0 then
@@ -560,7 +650,14 @@ local function refreshPlayerList()
 			pBtn.Size = UDim2.new(0, 190, 0, 28)
 			pBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 			pBtn.Text = p.DisplayName .. " (@" .. p.Name .. ")"
-			pBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			
+			-- Khởi tạo lại giao diện hiển thị nếu người chơi này đã nằm trong bảng ghim trước đó
+			if pinnedPlayers[p] then
+				pBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+			else
+				pBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			end
+			
 			pBtn.Font = Enum.Font.SourceSans
 			pBtn.TextSize = 13
 			pBtn.Parent = playerListFrame
@@ -570,13 +667,43 @@ local function refreshPlayerList()
 			btnRound.Parent = pBtn
 			
 			pBtn.MouseButton1Click:Connect(function()
-				selectedTargetPlayer = p
-				targetStatusLabel.Text = "Mục tiêu: " .. p.Name
-				targetStatusLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
-				for _, b in pairs(playerListFrame:GetChildren()) do
-					if b:IsA("TextButton") then b.BackgroundColor3 = Color3.fromRGB(60, 60, 60) end
+				if pinnedPlayers[p] then
+					-- LẦN 3: Hủy trạng thái ghim đỏ hoàn toàn
+					pinnedPlayers[p] = nil
+					pBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+					pBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+					updatePinnedOrder()
+					if selectedTargetPlayer == p and not hasPinnedPlayers() then
+						stopFlying()
+						targetStatusLabel.Text = "Mục tiêu: Chưa chọn"
+						targetStatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+					end
+				elseif selectedTargetPlayer == p then
+					-- LẦN 2: Chuyển sang chế độ ghim đỏ
+					pinnedPlayers[p] = true
+					pBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+					pBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+					updatePinnedOrder()
+				else
+					-- LẦN 1: Chọn mục tiêu bình thường (Xanh dương)
+					selectedTargetPlayer = p
+					targetStatusLabel.Text = "Mục tiêu: " .. p.Name
+					targetStatusLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
+					for _, b in pairs(playerListFrame:GetChildren()) do
+						if b:IsA("TextButton") then 
+							local associatedPlayer = nil
+							for _, pl in pairs(Players:GetPlayers()) do
+								if b.Text:find("@" .. pl.Name) then associatedPlayer = pl break end
+							end
+							if associatedPlayer and pinnedPlayers[associatedPlayer] then
+								b.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+							else
+								b.BackgroundColor3 = Color3.fromRGB(60, 60, 60) 
+							end
+						end
+					end
+					pBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
 				end
-				pBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
 			end)
 		end
 	end
@@ -585,8 +712,12 @@ end
 
 Players.PlayerAdded:Connect(refreshPlayerList)
 Players.PlayerRemoving:Connect(function(player)
+	if pinnedPlayers[player] then
+		pinnedPlayers[player] = nil
+		updatePinnedOrder()
+	end
 	if selectedTargetPlayer == player then 
-		if isTanSatActive then selectedTargetPlayer = nil else stopFlying() end
+		if isTanSatActive or hasPinnedPlayers() then selectedTargetPlayer = nil else stopFlying() end
 	end
 	refreshPlayerList()
 end)
