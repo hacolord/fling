@@ -266,8 +266,6 @@ local modeVangTimer = 0
 local isTemporarilySleeping = false
 local sleepTimer = 0
 
-local PREDICTION_FACTOR = 0.12 
-
 -- Hàm kiểm tra xem danh sách ghim đỏ có ai hợp lệ (còn online) không
 local function hasPinnedPlayers()
 	for p, _ in pairs(pinnedPlayers) do
@@ -486,18 +484,48 @@ local function startFlying()
 		local currentDistance = (myRoot.Position - tRoot.Position).Magnitude
 		local isUsingChaseMode = (selectedNetMode == 3 or selectedNetMode == 4)
 		
+		-- ====================================================================
+		-- LOGIC DỰ ĐOÁN ĐÓN ĐẦU (PREDICTION) MẠNH MẼ HƠN
+		-- ====================================================================
+		local targetPositionBase = tRoot.Position
+		local targetLookVector = tRoot.CFrame.LookVector
+		local enemyVelocity = tRoot.AssemblyLinearVelocity
+		
+		if enemyVelocity.Magnitude >= 2 then
+			local ping = 0.12
+			pcall(function() ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() / 1000 end)
+			
+			-- Ép ping dao động từ 0.12 đến 0.35 giây để đoán đủ xa khi địch lướt
+			ping = math.clamp(ping, 0.12, 0.35)
+			
+			local predictionOffset = enemyVelocity * ping
+			
+			-- Đã GỠ BỎ giới hạn 5 studs. Giờ khóa ở 50 studs để tóm được cả địch bay lướt xa mà không bị văng khỏi map
+			if predictionOffset.Magnitude > 50 then
+				predictionOffset = predictionOffset.Unit * 50
+			end
+			
+			targetPositionBase = tRoot.Position + predictionOffset
+			
+			-- Cập nhật luôn LookVector dự đoán nếu địch đổi hướng
+			if enemyVelocity.Magnitude > 5 then
+				targetLookVector = enemyVelocity.Unit
+			end
+		end
+		-- ====================================================================
+		
 		-- 🛠️ LOGIC MẠNG TRẮNG / CAM (SMART CHASE TRUY ĐUỔI VẬN TỐC KHI Ở XA)
 		if isUsingChaseMode and currentDistance > 10 then
 			if myHum then myHum:ChangeState(Enum.HumanoidStateType.Running) end
 			settings().Network.IncomingReplicationLag = 0
 			
 			local chaseSpeed = tonumber(flySpeedInput.Text) or 150
-			local targetTargetPos = tRoot.Position + Vector3.new(0, verticalDist, 0)
+			local targetTargetPos = targetPositionBase + Vector3.new(0, verticalDist, 0)
 			local direction = (targetTargetPos - myRoot.Position).Unit
 			
 			myRoot.AssemblyLinearVelocity = direction * chaseSpeed
 			myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-			myRoot.CFrame = CFrame.new(myRoot.Position, tRoot.Position)
+			myRoot.CFrame = CFrame.new(myRoot.Position, targetPositionBase)
 		else
 			-- TRẠNG THÁI ÁP SÁT GẦN HOẶC CHẾ ĐỘ THƯỜNG: KHÓA CFRAME ĐỂ TẤN CÔNG
 			if myHum then myHum:ChangeState(Enum.HumanoidStateType.Physics) end
@@ -506,8 +534,6 @@ local function startFlying()
 			
 			settings().Network.IncomingReplicationLag = 0.12
 			
-			local enemyVelocity = tRoot.AssemblyLinearVelocity
-			local targetPositionBase = tRoot.Position + (enemyVelocity * PREDICTION_FACTOR)
 			local userSpeed = tonumber(speedInput.Text) or 120
 			local nextCFramePosition = Vector3.new(0,0,0)
 			
@@ -521,13 +547,13 @@ local function startFlying()
 				
 				nextCFramePosition = Vector3.new(targetX, targetY, targetZ)
 			elseif selectedDirMode == 2 then
-				local backVector = -tRoot.CFrame.LookVector
+				local backVector = -targetLookVector
 				nextCFramePosition = targetPositionBase + (backVector * horizontalDist) + Vector3.new(0, verticalDist, 0)
 			else
 				nextCFramePosition = targetPositionBase + Vector3.new(0, verticalDist, 0)
 			end
 			
-			myRoot.CFrame = CFrame.new(nextCFramePosition, tRoot.Position)
+			myRoot.CFrame = CFrame.new(nextCFramePosition, targetPositionBase)
 		end
 	end)
 	
