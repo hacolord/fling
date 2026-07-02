@@ -209,7 +209,6 @@ tanSatBtn.TextSize = 12
 tanSatBtn.Parent = mainFrame
 Instance.new("UICorner", tanSatBtn).CornerRadius = UDim.new(0, 6)
 
--- Thêm UIGradient để tạo màu nửa đỏ nửa xám
 local tsGradient = Instance.new("UIGradient")
 tsGradient.Color = ColorSequence.new({
 	ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 0, 0)),
@@ -231,6 +230,7 @@ targetStatusLabel.TextSize = 12
 targetStatusLabel.Parent = mainFrame
 Instance.new("UICorner", targetStatusLabel).CornerRadius = UDim.new(0, 4)
 
+-- MINI GUI 1 (TRACKER GỐC)
 local widgetFrame = Instance.new("Frame")
 widgetFrame.Name = "FlyWidget"
 widgetFrame.Size = UDim2.new(0, 50, 0, 50) 
@@ -252,6 +252,28 @@ actionBtn.TextSize = 11
 actionBtn.Parent = widgetFrame
 Instance.new("UICorner", actionBtn).CornerRadius = UDim.new(0, 10)
 
+-- MINI GUI 2 (FLY DI CHUYỂN MANUAL CHUẨN GHOST HUB)
+local manualFlyWidget = Instance.new("Frame")
+manualFlyWidget.Name = "ManualFlyWidget"
+manualFlyWidget.Size = UDim2.new(0, 50, 0, 50) 
+manualFlyWidget.Position = UDim2.new(0.5, 200, 0.5, -25) 
+manualFlyWidget.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+manualFlyWidget.BorderSizePixel = 0
+manualFlyWidget.Active = true
+manualFlyWidget.Parent = screenGui
+Instance.new("UICorner", manualFlyWidget).CornerRadius = UDim.new(0, 10)
+
+local manualFlyBtn = Instance.new("TextButton")
+manualFlyBtn.Name = "ManualFlyBtn"
+manualFlyBtn.Size = UDim2.new(1, 0, 1, 0) 
+manualFlyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+manualFlyBtn.Text = "FLY\nOFF"
+manualFlyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+manualFlyBtn.Font = Enum.Font.SourceSansBold
+manualFlyBtn.TextSize = 11 
+manualFlyBtn.Parent = manualFlyWidget
+Instance.new("UICorner", manualFlyBtn).CornerRadius = UDim.new(0, 10)
+
 --======================================================================
 -- 2. ĐỘNG CƠ TÍNH TOÁN LOGIC
 --======================================================================
@@ -261,7 +283,7 @@ local isTrackingActive = false
 local selectedHeightMode = 1 
 local selectedDirMode = 1     
 local selectedNetMode = 1
-local tanSatMode = 0 -- 0: OFF, 1: Tàn Sát, 2: Dự đoán, 3: Cả hai
+local tanSatMode = 0 
 
 local pinnedPlayers = {}      
 local pinnedOrder = {}        
@@ -274,6 +296,12 @@ local currentAngle = 0
 local modeVangTimer = 0
 local isTemporarilySleeping = false
 local sleepTimer = 0
+
+-- LOGIC CỦA MINI GUI FLY
+local isManualFlyEnabled = false
+local manualFlyConnection = nil
+local manualFlyBv = nil
+local manualFlyBg = nil
 
 --======================================================================
 -- LƯU VÀ TẢI SETTINGS LOGIC
@@ -303,7 +331,6 @@ local function updateTanSatUI()
 end
 
 local function applyLoadedVisuals()
-	-- Height
 	if selectedHeightMode == 2 then
 		heightModeBtn.Text = "MODE: DƯỚI ĐẤT"
 		heightModeBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
@@ -316,7 +343,6 @@ local function applyLoadedVisuals()
 		heightModeBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 150)
 	end
 	
-	-- Direction
 	if selectedDirMode == 2 then
 		directionModeBtn.Text = "BACKSTAB (SAU)"
 		directionModeBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
@@ -329,7 +355,6 @@ local function applyLoadedVisuals()
 		directionModeBtn.BackgroundColor3 = Color3.fromRGB(150, 70, 0)
 	end
 
-	-- Net
 	if selectedNetMode == 2 then
 		netModeBtn.Text = "NET: AUTO-RESET"
 		netModeBtn.BackgroundColor3 = Color3.fromRGB(200, 160, 0) 
@@ -348,7 +373,6 @@ local function applyLoadedVisuals()
 		netModeBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 55) 
 		netModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	end
-	
 	updateTanSatUI()
 end
 
@@ -521,6 +545,11 @@ local function startFlying()
 		local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 		local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
 		
+		-- ==============================================
+		-- TẠM DỪNG TRACKER KHI ĐANG BẬT FLY MINI GUI 2
+		-- ==============================================
+		if isManualFlyEnabled then return end 
+		
 		if hasPinnedPlayers() then
 			local currentTarget = pinnedOrder[currentPinnedIndex]
 			local isValidAndAlive = false
@@ -573,7 +602,6 @@ local function startFlying()
 		local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
 		
 		if not myRoot or not tRoot then
-			-- Chỉ dừng khi Tàn Sát tắt
 			if (tanSatMode == 0 or tanSatMode == 2) and not hasPinnedPlayers() then stopFlying() end
 			return
 		end
@@ -614,9 +642,6 @@ local function startFlying()
 		local targetLookVector = tRoot.CFrame.LookVector
 		local enemyVelocity = tRoot.AssemblyLinearVelocity
 		
-		-- ====================================================================
-		-- CHỈ DỰ ĐOÁN KHI BẬT PREDICTION (MODE 2 HOẶC 3)
-		-- ====================================================================
 		if (tanSatMode == 2 or tanSatMode == 3) and enemyVelocity.Magnitude >= 2 then
 			local ping = 0.12
 			pcall(function() ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() / 1000 end)
@@ -630,7 +655,6 @@ local function startFlying()
 				targetLookVector = enemyVelocity.Unit
 			end
 		end
-		-- ====================================================================
 		
 		if isUsingChaseMode and currentDistance > 10 then
 			if myHum then myHum:ChangeState(Enum.HumanoidStateType.Running) end
@@ -710,7 +734,6 @@ heightModeBtn.MouseButton1Click:Connect(function()
 end)
 
 tanSatConnection = RunService.Heartbeat:Connect(function()
-	-- CHỈ TÀN SÁT KHI BẬT MODE 1 HOẶC 3
 	if (tanSatMode == 1 or tanSatMode == 3) and isTrackingActive and not hasPinnedPlayers() then
 		local tChar = selectedTargetPlayer and selectedTargetPlayer.Character
 		local tHum = tChar and tChar:FindFirstChildOfClass("Humanoid")
@@ -734,6 +757,91 @@ tanSatBtn.MouseButton1Click:Connect(function()
 	tanSatMode = tanSatMode + 1
 	if tanSatMode > 3 then tanSatMode = 0 end
 	updateTanSatUI()
+end)
+
+--======================================================================
+-- BỘ MÁY BAY MANUAL (GHOST HUB STYLE) - CHỐNG KẸT ĐẤT HOÀN TOÀN
+--======================================================================
+manualFlyBtn.MouseButton1Click:Connect(function()
+	isManualFlyEnabled = not isManualFlyEnabled
+	if isManualFlyEnabled then
+		manualFlyBtn.BackgroundColor3 = Color3.fromRGB(255, 120, 0)
+		manualFlyBtn.Text = "FLY\nON"
+		
+		local char = localPlayer.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		
+		if root and hum then
+			-- Bật PlatformStand để ngắt ma sát và hoạt ảnh bước đi (Ngăn bị đất đè xuống)
+			hum.PlatformStand = true 
+			
+			-- Tạo BodyVelocity siêu khỏe để bay lơ lửng chống hoàn toàn trọng lực
+			manualFlyBv = Instance.new("BodyVelocity")
+			manualFlyBv.Name = "GhostFlyBV"
+			manualFlyBv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+			manualFlyBv.Velocity = Vector3.new(0, 0, 0)
+			manualFlyBv.Parent = root
+			
+			-- Tạo BodyGyro giữ nhân vật luôn thăng bằng, xoay theo góc nhìn
+			manualFlyBg = Instance.new("BodyGyro")
+			manualFlyBg.Name = "GhostFlyBG"
+			manualFlyBg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+			manualFlyBg.P = 9e4
+			manualFlyBg.CFrame = root.CFrame
+			manualFlyBg.Parent = root
+
+			manualFlyConnection = RunService.RenderStepped:Connect(function()
+				local c = localPlayer.Character
+				local r = c and c:FindFirstChild("HumanoidRootPart")
+				local h = c and c:FindFirstChildOfClass("Humanoid")
+				
+				if r and h and manualFlyBv and manualFlyBg then
+					local moveDir = h.MoveDirection -- Nút điều hướng trên màn hình điện thoại
+					local fSpeed = tonumber(flySpeedInput.Text) or 150
+					
+					if moveDir.Magnitude > 0 then
+						-- Công thức map Joystick thành Camera 3D
+						local flatLook = Vector3.new(Camera.CFrame.LookVector.X, 0, Camera.CFrame.LookVector.Z)
+						if flatLook.Magnitude < 0.01 then -- Fix lỗi cắm thẳng mặt xuống hoặc nhìn thẳng lên
+							flatLook = Vector3.new(Camera.CFrame.UpVector.X, 0, Camera.CFrame.UpVector.Z)
+						end
+						
+						local flatCam = CFrame.lookAt(Vector3.zero, flatLook)
+						local rawInput = flatCam:VectorToObjectSpace(moveDir) 
+						
+						-- Cấp lực đẩy dựa theo hướng nhìn của mắt Camera
+						local flyDir = Camera.CFrame:VectorToWorldSpace(Vector3.new(rawInput.X, 0, rawInput.Z))
+						manualFlyBv.Velocity = flyDir.Unit * fSpeed
+					else
+						manualFlyBv.Velocity = Vector3.new(0, 0, 0)
+					end
+					
+					-- Luôn xoay nhân vật cùng hướng với Camera
+					manualFlyBg.CFrame = CFrame.new(r.Position, r.Position + Camera.CFrame.LookVector * Vector3.new(1,0,1))
+				end
+			end)
+		end
+	else
+		manualFlyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+		manualFlyBtn.Text = "FLY\nOFF"
+		
+		if manualFlyConnection then
+			manualFlyConnection:Disconnect()
+			manualFlyConnection = nil
+		end
+		
+		if manualFlyBv then manualFlyBv:Destroy() manualFlyBv = nil end
+		if manualFlyBg then manualFlyBg:Destroy() manualFlyBg = nil end
+		
+		local char = localPlayer.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if hum then 
+			-- Tắt PlatformStand để nhân vật rơi xuống tự nhiên và bước đi bình thường
+			hum.PlatformStand = false 
+			hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+		end
+	end
 end)
 
 --======================================================================
@@ -779,7 +887,6 @@ local function refreshPlayerList()
 					targetStatusLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
 					pBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
 					
-					-- Refresh button colors visual safely
 					for _, b in pairs(playerListFrame:GetChildren()) do
 						if b:IsA("TextButton") and b ~= pBtn then 
 							b.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -816,7 +923,7 @@ local function makeDraggable(frame, handle)
 	handle.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
-			if handle == actionBtn then isDraggingWidget = false end
+			if handle == actionBtn or handle == manualFlyBtn then isDraggingWidget = false end
 			dragStart = input.Position
 			startPos = frame.Position
 			
@@ -830,7 +937,7 @@ local function makeDraggable(frame, handle)
 		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 			dragInput = input
 			if dragging then
-				if handle == actionBtn then isDraggingWidget = true end
+				if handle == actionBtn or handle == manualFlyBtn then isDraggingWidget = true end
 				if handle == frame then lastSavedPosition = frame.Position end
 			end
 		end
@@ -848,6 +955,7 @@ end
 
 makeDraggable(mainFrame, mainFrame)
 makeDraggable(widgetFrame, actionBtn)
+makeDraggable(manualFlyWidget, manualFlyBtn)
 
 actionBtn.MouseButton1Up:Connect(function()
 	if not isDraggingWidget then
