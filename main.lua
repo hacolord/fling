@@ -2,13 +2,14 @@ local UIS = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
 local Camera = workspace.CurrentCamera
 
 --======================================================================
--- 1. KHỞI TẠO GIAO DIỆN (ĐÃ TÁCH BIỆT CÁC NÚT RIÊNG BIỆT)
+-- 1. KHỞI TẠO GIAO DIỆN
 --======================================================================
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "TargetFlySystemV20_Fixed"
@@ -39,16 +40,45 @@ toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggleBtn.Font = Enum.Font.SourceSansBold
 toggleBtn.TextSize = 18
 toggleBtn.Parent = mainFrame
-
 local btnCorner = Instance.new("UICorner")
 btnCorner.CornerRadius = UDim.new(0, 6)
 btnCorner.Parent = toggleBtn
 
+-- Nút LƯU (SAVE)
+local saveBtn = Instance.new("TextButton")
+saveBtn.Name = "SaveBtn"
+saveBtn.Size = UDim2.new(0, 26, 0, 26)
+saveBtn.Position = UDim2.new(1, -70, 0, 8)
+saveBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 50)
+saveBtn.Text = "S"
+saveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+saveBtn.Font = Enum.Font.SourceSansBold
+saveBtn.TextSize = 14
+saveBtn.Parent = mainFrame
+local saveCorner = Instance.new("UICorner")
+saveCorner.CornerRadius = UDim.new(0, 6)
+saveCorner.Parent = saveBtn
+
+-- Nút TẢI (LOAD)
+local loadBtn = Instance.new("TextButton")
+loadBtn.Name = "LoadBtn"
+loadBtn.Size = UDim2.new(0, 26, 0, 26)
+loadBtn.Position = UDim2.new(1, -100, 0, 8)
+loadBtn.BackgroundColor3 = Color3.fromRGB(255, 120, 0)
+loadBtn.Text = "L"
+loadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+loadBtn.Font = Enum.Font.SourceSansBold
+loadBtn.TextSize = 14
+loadBtn.Parent = mainFrame
+local loadCorner = Instance.new("UICorner")
+loadCorner.CornerRadius = UDim.new(0, 6)
+loadCorner.Parent = loadBtn
+
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(0, 160, 0, 35)
-titleLabel.Position = UDim2.new(0, 15, 0, 5)
+titleLabel.Size = UDim2.new(0, 140, 0, 35)
+titleLabel.Position = UDim2.new(0, 10, 0, 5)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "TRACKER V20.2 FIX"
+titleLabel.Text = "TRACKER v20.2"
 titleLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
 titleLabel.Font = Enum.Font.SourceSansBold
 titleLabel.TextSize = 15
@@ -68,7 +98,6 @@ playerListFrame.Parent = mainFrame
 local listCorner = Instance.new("UICorner")
 listCorner.CornerRadius = UDim.new(0, 6)
 listCorner.Parent = playerListFrame
-
 local listLayout = Instance.new("UIListLayout")
 listLayout.Padding = UDim.new(0, 4)
 listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -87,10 +116,7 @@ speedInput.Font = Enum.Font.SourceSans
 speedInput.TextSize = 14
 speedInput.ClearTextOnFocus = false
 speedInput.Parent = mainFrame
-
-local speedCorner = Instance.new("UICorner")
-speedCorner.CornerRadius = UDim.new(0, 6)
-speedCorner.Parent = speedInput
+Instance.new("UICorner", speedInput).CornerRadius = UDim.new(0, 6)
 
 local distanceInput = Instance.new("TextBox")
 distanceInput.Name = "DistanceInput"
@@ -104,10 +130,7 @@ distanceInput.Font = Enum.Font.SourceSans
 distanceInput.TextSize = 14
 distanceInput.ClearTextOnFocus = false
 distanceInput.Parent = mainFrame
-
-local distCorner = Instance.new("UICorner")
-distCorner.CornerRadius = UDim.new(0, 6)
-distCorner.Parent = distanceInput
+Instance.new("UICorner", distanceInput).CornerRadius = UDim.new(0, 6)
 
 local heightInput = Instance.new("TextBox")
 heightInput.Name = "HeightInput"
@@ -121,10 +144,7 @@ heightInput.Font = Enum.Font.SourceSans
 heightInput.TextSize = 14
 heightInput.ClearTextOnFocus = false
 heightInput.Parent = mainFrame
-
-local heightCorner = Instance.new("UICorner")
-heightCorner.CornerRadius = UDim.new(0, 6)
-heightCorner.Parent = heightInput
+Instance.new("UICorner", heightInput).CornerRadius = UDim.new(0, 6)
 
 local flySpeedInput = Instance.new("TextBox")
 flySpeedInput.Name = "FlySpeedInput"
@@ -138,10 +158,7 @@ flySpeedInput.Font = Enum.Font.SourceSans
 flySpeedInput.TextSize = 14
 flySpeedInput.ClearTextOnFocus = false
 flySpeedInput.Parent = mainFrame
-
-local fsCorner = Instance.new("UICorner")
-fsCorner.CornerRadius = UDim.new(0, 6)
-fsCorner.Parent = flySpeedInput
+Instance.new("UICorner", flySpeedInput).CornerRadius = UDim.new(0, 6)
 
 local heightModeBtn = Instance.new("TextButton")
 heightModeBtn.Name = "HeightModeBtn"
@@ -153,10 +170,7 @@ heightModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 heightModeBtn.Font = Enum.Font.SourceSansBold
 heightModeBtn.TextSize = 11
 heightModeBtn.Parent = mainFrame
-
-local hmCorner = Instance.new("UICorner")
-hmCorner.CornerRadius = UDim.new(0, 6)
-hmCorner.Parent = heightModeBtn
+Instance.new("UICorner", heightModeBtn).CornerRadius = UDim.new(0, 6)
 
 local directionModeBtn = Instance.new("TextButton")
 directionModeBtn.Name = "DirectionModeBtn"
@@ -168,10 +182,7 @@ directionModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 directionModeBtn.Font = Enum.Font.SourceSansBold
 directionModeBtn.TextSize = 11
 directionModeBtn.Parent = mainFrame
-
-local dmCorner = Instance.new("UICorner")
-dmCorner.CornerRadius = UDim.new(0, 6)
-dmCorner.Parent = directionModeBtn
+Instance.new("UICorner", directionModeBtn).CornerRadius = UDim.new(0, 6)
 
 local netModeBtn = Instance.new("TextButton")
 netModeBtn.Name = "NetModeBtn"
@@ -183,25 +194,31 @@ netModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 netModeBtn.Font = Enum.Font.SourceSansBold
 netModeBtn.TextSize = 12
 netModeBtn.Parent = mainFrame
+Instance.new("UICorner", netModeBtn).CornerRadius = UDim.new(0, 6)
 
-local netCorner = Instance.new("UICorner")
-netCorner.CornerRadius = UDim.new(0, 6)
-netCorner.Parent = netModeBtn
-
+-- NÚT TÀN SÁT 4 CHẾ ĐỘ
 local tanSatBtn = Instance.new("TextButton")
 tanSatBtn.Name = "TanSatBtn"
 tanSatBtn.Size = UDim2.new(0, 210, 0, 32)
 tanSatBtn.Position = UDim2.new(0, 20, 0, 386)
 tanSatBtn.BackgroundColor3 = Color3.fromRGB(60, 20, 20)
-tanSatBtn.Text = "CHẾ ĐỘ TÀN SÁT: OFF"
+tanSatBtn.Text = "MODE: OFF (TS/PRED)"
 tanSatBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 tanSatBtn.Font = Enum.Font.SourceSansBold
 tanSatBtn.TextSize = 12
 tanSatBtn.Parent = mainFrame
+Instance.new("UICorner", tanSatBtn).CornerRadius = UDim.new(0, 6)
 
-local tsCorner = Instance.new("UICorner")
-tsCorner.CornerRadius = UDim.new(0, 6)
-tsCorner.Parent = tanSatBtn
+-- Thêm UIGradient để tạo màu nửa đỏ nửa xám
+local tsGradient = Instance.new("UIGradient")
+tsGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 0, 0)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150, 0, 0)),
+	ColorSequenceKeypoint.new(0.501, Color3.fromRGB(120, 120, 120)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 120, 120))
+})
+tsGradient.Enabled = false
+tsGradient.Parent = tanSatBtn
 
 local targetStatusLabel = Instance.new("TextLabel")
 targetStatusLabel.Size = UDim2.new(0, 210, 0, 25)
@@ -212,10 +229,7 @@ targetStatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 targetStatusLabel.Font = Enum.Font.SourceSansItalic
 targetStatusLabel.TextSize = 12
 targetStatusLabel.Parent = mainFrame
-
-local statusCorner = Instance.new("UICorner")
-statusCorner.CornerRadius = UDim.new(0, 4)
-statusCorner.Parent = targetStatusLabel
+Instance.new("UICorner", targetStatusLabel).CornerRadius = UDim.new(0, 4)
 
 local widgetFrame = Instance.new("Frame")
 widgetFrame.Name = "FlyWidget"
@@ -225,10 +239,7 @@ widgetFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 widgetFrame.BorderSizePixel = 0
 widgetFrame.Active = true
 widgetFrame.Parent = screenGui
-
-local widgetCorner = Instance.new("UICorner")
-widgetCorner.CornerRadius = UDim.new(0, 10)
-widgetCorner.Parent = widgetFrame
+Instance.new("UICorner", widgetFrame).CornerRadius = UDim.new(0, 10)
 
 local actionBtn = Instance.new("TextButton")
 actionBtn.Name = "ActionBtn"
@@ -239,54 +250,177 @@ actionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 actionBtn.Font = Enum.Font.SourceSansBold
 actionBtn.TextSize = 11 
 actionBtn.Parent = widgetFrame
-
-local actionCorner = Instance.new("UICorner")
-actionCorner.CornerRadius = UDim.new(0, 10)
-actionCorner.Parent = actionBtn
+Instance.new("UICorner", actionBtn).CornerRadius = UDim.new(0, 10)
 
 --======================================================================
 -- 2. ĐỘNG CƠ TÍNH TOÁN LOGIC
 --======================================================================
 local selectedTargetPlayer = nil  
 local isTrackingActive = false
-local selectedHeightMode = 1 
-local selectedDirMode = 1     -- 1: Orbit, 2: Backstab, 3: Off
-local isTanSatActive = false 
 
-local pinnedPlayers = {}      -- Bảng lưu trữ trạng thái ghim đỏ {[Player] = true}
-local pinnedOrder = {}        -- Danh sách thứ tự ghim để chạy vòng lặp
-local currentPinnedIndex = 1  -- Con trỏ định vị người chơi đang bị target trong list ghim
+local selectedHeightMode = 1 
+local selectedDirMode = 1     
+local selectedNetMode = 1
+local tanSatMode = 0 -- 0: OFF, 1: Tàn Sát, 2: Dự đoán, 3: Cả hai
+
+local pinnedPlayers = {}      
+local pinnedOrder = {}        
+local currentPinnedIndex = 1  
 
 local flyConnection = nil         
 local noclipConnection = nil
 local tanSatConnection = nil
 local currentAngle = 0 
-
 local modeVangTimer = 0
 local isTemporarilySleeping = false
 local sleepTimer = 0
 
--- Hàm kiểm tra xem danh sách ghim đỏ có ai hợp lệ (còn online) không
+--======================================================================
+-- LƯU VÀ TẢI SETTINGS LOGIC
+--======================================================================
+local function updateTanSatUI()
+	if tanSatMode == 0 then
+		tanSatBtn.Text = "MODE: OFF (TS/PRED)"
+		tanSatBtn.BackgroundColor3 = Color3.fromRGB(60, 20, 20)
+		tanSatBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+		tsGradient.Enabled = false
+	elseif tanSatMode == 1 then
+		tanSatBtn.Text = "MODE: TÀN SÁT (ĐỎ)"
+		tanSatBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+		tanSatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		tsGradient.Enabled = false
+	elseif tanSatMode == 2 then
+		tanSatBtn.Text = "MODE: DỰ ĐOÁN (XÁM)"
+		tanSatBtn.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+		tanSatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		tsGradient.Enabled = false
+	elseif tanSatMode == 3 then
+		tanSatBtn.Text = "TÀN SÁT + DỰ ĐOÁN"
+		tanSatBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		tanSatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		tsGradient.Enabled = true
+	end
+end
+
+local function applyLoadedVisuals()
+	-- Height
+	if selectedHeightMode == 2 then
+		heightModeBtn.Text = "MODE: DƯỚI ĐẤT"
+		heightModeBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+	elseif selectedHeightMode == 3 then
+		heightModeBtn.Text = "MODE: OFF"
+		heightModeBtn.BackgroundColor3 = Color3.fromRGB(75, 75, 75)
+	else
+		selectedHeightMode = 1
+		heightModeBtn.Text = "MODE: TRÊN TRỜI"
+		heightModeBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 150)
+	end
+	
+	-- Direction
+	if selectedDirMode == 2 then
+		directionModeBtn.Text = "BACKSTAB (SAU)"
+		directionModeBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+	elseif selectedDirMode == 3 then
+		directionModeBtn.Text = "DIR: OFF"
+		directionModeBtn.BackgroundColor3 = Color3.fromRGB(75, 75, 75)
+	else
+		selectedDirMode = 1
+		directionModeBtn.Text = "ORBIT (XOAY)"
+		directionModeBtn.BackgroundColor3 = Color3.fromRGB(150, 70, 0)
+	end
+
+	-- Net
+	if selectedNetMode == 2 then
+		netModeBtn.Text = "NET: AUTO-RESET"
+		netModeBtn.BackgroundColor3 = Color3.fromRGB(200, 160, 0) 
+		netModeBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+	elseif selectedNetMode == 3 then
+		netModeBtn.Text = "NET: SMART CHASE"
+		netModeBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255) 
+		netModeBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+	elseif selectedNetMode == 4 then
+		netModeBtn.Text = "NET: HYBRID BOTH"
+		netModeBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 0) 
+		netModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	else
+		selectedNetMode = 1
+		netModeBtn.Text = "NET: NORMAL"
+		netModeBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 55) 
+		netModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	end
+	
+	updateTanSatUI()
+end
+
+saveBtn.MouseButton1Click:Connect(function()
+	local dataToSave = {
+		sp = speedInput.Text,
+		di = distanceInput.Text,
+		hi = heightInput.Text,
+		fs = flySpeedInput.Text,
+		hm = selectedHeightMode,
+		dm = selectedDirMode,
+		nm = selectedNetMode,
+		tm = tanSatMode
+	}
+	pcall(function()
+		local json = HttpService:JSONEncode(dataToSave)
+		if writefile then
+			writefile("TrackerConfig.json", json)
+		else
+			_G.TrackerSavedConfig = json
+		end
+		saveBtn.Text = "OK"
+		task.wait(0.6)
+		saveBtn.Text = "S"
+	end)
+end)
+
+loadBtn.MouseButton1Click:Connect(function()
+	pcall(function()
+		local json = nil
+		if readfile then
+			pcall(function() json = readfile("TrackerConfig.json") end)
+		end
+		if not json and _G.TrackerSavedConfig then
+			json = _G.TrackerSavedConfig
+		end
+		
+		if json then
+			local data = HttpService:JSONDecode(json)
+			speedInput.Text = data.sp or "120"
+			distanceInput.Text = data.di or "4.5"
+			heightInput.Text = data.hi or "8"
+			flySpeedInput.Text = data.fs or "150"
+			
+			selectedHeightMode = data.hm or 1
+			selectedDirMode = data.dm or 1
+			selectedNetMode = data.nm or 1
+			tanSatMode = data.tm or 0
+			
+			applyLoadedVisuals()
+			
+			loadBtn.Text = "OK"
+			task.wait(0.6)
+			loadBtn.Text = "L"
+		end
+	end)
+end)
+
+--======================================================================
 local function hasPinnedPlayers()
 	for p, _ in pairs(pinnedPlayers) do
-		if p and p.Parent == Players then
-			return true
-		end
+		if p and p.Parent == Players then return true end
 	end
 	return false
 end
 
--- Hàm cập nhật mảng thứ tự ghim để đồng bộ hóa vòng lặp
 local function updatePinnedOrder()
 	pinnedOrder = {}
 	for p, _ in pairs(pinnedPlayers) do
-		if p and p.Parent == Players then
-			table.insert(pinnedOrder, p)
-		end
+		if p and p.Parent == Players then table.insert(pinnedOrder, p) end
 	end
-	if currentPinnedIndex > #pinnedOrder then
-		currentPinnedIndex = 1
-	end
+	if currentPinnedIndex > #pinnedOrder then currentPinnedIndex = 1 end
 end
 
 local function getClosestPlayer()
@@ -387,22 +521,16 @@ local function startFlying()
 		local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 		local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
 		
-		-- KIỂM TRA ĐIỀU KIỆN XOAY VÒNG GHIM ĐỎ TRƯỚC
 		if hasPinnedPlayers() then
 			local currentTarget = pinnedOrder[currentPinnedIndex]
-			
-			-- Kiểm tra xem mục tiêu hiện tại hợp lệ và đang sống không
 			local isValidAndAlive = false
 			if currentTarget and currentTarget.Parent == Players then
 				local cChar = currentTarget.Character
 				local cHum = cChar and cChar:FindFirstChildOfClass("Humanoid")
-				if cHum and cHum.Health > 0 then
-					isValidAndAlive = true
-				end
+				if cHum and cHum.Health > 0 then isValidAndAlive = true end
 			end
 			
 			if not isValidAndAlive then
-				-- Nếu mục tiêu chết/không hợp lệ, tìm kiếm người kế tiếp trong danh sách ghim đang sống
 				local foundNext = false
 				local startIndex = currentPinnedIndex
 				for i = 1, #pinnedOrder do
@@ -425,7 +553,6 @@ local function startFlying()
 					if currentPinnedIndex == startIndex then break end
 				end
 				
-				-- Nếu tất cả mục tiêu ghim đều đang chết, tạm thời đứng yên không track
 				if not foundNext then
 					targetStatusLabel.Text = "Ghim: Chờ mục tiêu hồi sinh..."
 					targetStatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
@@ -436,7 +563,6 @@ local function startFlying()
 					return
 				end
 			else
-				-- Nếu mục tiêu hiện tại vẫn ổn định, gán cứng vào selectedTargetPlayer
 				selectedTargetPlayer = currentTarget
 				targetStatusLabel.Text = "Ghim: " .. currentTarget.Name
 				targetStatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
@@ -447,11 +573,11 @@ local function startFlying()
 		local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
 		
 		if not myRoot or not tRoot then
-			if not isTanSatActive and not hasPinnedPlayers() then stopFlying() end
+			-- Chỉ dừng khi Tàn Sát tắt
+			if (tanSatMode == 0 or tanSatMode == 2) and not hasPinnedPlayers() then stopFlying() end
 			return
 		end
 		
-		-- ⏱️ LOGIC MẠNG VÀNG / CAM (AUTO-RESET 3S - NGHỈ 0.25S)
 		if selectedNetMode == 2 or selectedNetMode == 4 then
 			if isTemporarilySleeping then
 				sleepTimer = sleepTimer + deltaTime
@@ -484,37 +610,28 @@ local function startFlying()
 		local currentDistance = (myRoot.Position - tRoot.Position).Magnitude
 		local isUsingChaseMode = (selectedNetMode == 3 or selectedNetMode == 4)
 		
-		-- ====================================================================
-		-- LOGIC DỰ ĐOÁN ĐÓN ĐẦU (PREDICTION) MẠNH MẼ HƠN
-		-- ====================================================================
 		local targetPositionBase = tRoot.Position
 		local targetLookVector = tRoot.CFrame.LookVector
 		local enemyVelocity = tRoot.AssemblyLinearVelocity
 		
-		if enemyVelocity.Magnitude >= 2 then
+		-- ====================================================================
+		-- CHỈ DỰ ĐOÁN KHI BẬT PREDICTION (MODE 2 HOẶC 3)
+		-- ====================================================================
+		if (tanSatMode == 2 or tanSatMode == 3) and enemyVelocity.Magnitude >= 2 then
 			local ping = 0.12
 			pcall(function() ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() / 1000 end)
-			
-			-- Ép ping dao động từ 0.12 đến 0.35 giây để đoán đủ xa khi địch lướt
 			ping = math.clamp(ping, 0.12, 0.35)
-			
 			local predictionOffset = enemyVelocity * ping
-			
-			-- Đã GỠ BỎ giới hạn 5 studs. Giờ khóa ở 50 studs để tóm được cả địch bay lướt xa mà không bị văng khỏi map
 			if predictionOffset.Magnitude > 50 then
 				predictionOffset = predictionOffset.Unit * 50
 			end
-			
 			targetPositionBase = tRoot.Position + predictionOffset
-			
-			-- Cập nhật luôn LookVector dự đoán nếu địch đổi hướng
 			if enemyVelocity.Magnitude > 5 then
 				targetLookVector = enemyVelocity.Unit
 			end
 		end
 		-- ====================================================================
 		
-		-- 🛠️ LOGIC MẠNG TRẮNG / CAM (SMART CHASE TRUY ĐUỔI VẬN TỐC KHI Ở XA)
 		if isUsingChaseMode and currentDistance > 10 then
 			if myHum then myHum:ChangeState(Enum.HumanoidStateType.Running) end
 			settings().Network.IncomingReplicationLag = 0
@@ -527,7 +644,6 @@ local function startFlying()
 			myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
 			myRoot.CFrame = CFrame.new(myRoot.Position, targetPositionBase)
 		else
-			-- TRẠNG THÁI ÁP SÁT GẦN HOẶC CHẾ ĐỘ THƯỜNG: KHÓA CFRAME ĐỂ TẤN CÔNG
 			if myHum then myHum:ChangeState(Enum.HumanoidStateType.Physics) end
 			myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 			myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
@@ -570,70 +686,32 @@ local function startFlying()
 end
 
 --======================================================================
--- ĐIỀU KHIỂN SỰ KIỆN NÚT BẤM
+-- ĐIỀU KHIỂN SỰ KIỆN NÚT BẤM CŨ
 --======================================================================
 netModeBtn.MouseButton1Click:Connect(function()
-	if selectedNetMode == 1 then
-		selectedNetMode = 2
-		netModeBtn.Text = "NET: AUTO-RESET"
-		netModeBtn.BackgroundColor3 = Color3.fromRGB(200, 160, 0) 
-		netModeBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
-	elseif selectedNetMode == 2 then
-		selectedNetMode = 3
-		netModeBtn.Text = "NET: SMART CHASE"
-		netModeBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255) 
-		netModeBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
-	elseif selectedNetMode == 3 then
-		selectedNetMode = 4
-		netModeBtn.Text = "NET: HYBRID BOTH"
-		netModeBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 0) 
-		netModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	else
-		selectedNetMode = 1
-		netModeBtn.Text = "NET: NORMAL"
-		netModeBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 55) 
-		netModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	end
+	selectedNetMode = selectedNetMode + 1
+	if selectedNetMode > 4 then selectedNetMode = 1 end
+	applyLoadedVisuals()
 	if isTrackingActive then startFlying() end
 end)
 
 directionModeBtn.MouseButton1Click:Connect(function()
-	if selectedDirMode == 1 then
-		selectedDirMode = 2
-		directionModeBtn.Text = "BACKSTAB (SAU)"
-		directionModeBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-	elseif selectedDirMode == 2 then
-		selectedDirMode = 3
-		directionModeBtn.Text = "DIR: OFF"
-		directionModeBtn.BackgroundColor3 = Color3.fromRGB(75, 75, 75)
-	else
-		selectedDirMode = 1
-		directionModeBtn.Text = "ORBIT (XOAY)"
-		directionModeBtn.BackgroundColor3 = Color3.fromRGB(150, 70, 0)
-	end
+	selectedDirMode = selectedDirMode + 1
+	if selectedDirMode > 3 then selectedDirMode = 1 end
+	applyLoadedVisuals()
 	if isTrackingActive then startFlying() end
 end)
 
 heightModeBtn.MouseButton1Click:Connect(function()
-	if selectedHeightMode == 1 then
-		selectedHeightMode = 2
-		heightModeBtn.Text = "MODE: DƯỚI ĐẤT"
-		heightModeBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-	elseif selectedHeightMode == 2 then
-		selectedHeightMode = 3
-		heightModeBtn.Text = "MODE: OFF"
-		heightModeBtn.BackgroundColor3 = Color3.fromRGB(75, 75, 75)
-	else
-		selectedHeightMode = 1
-		heightModeBtn.Text = "MODE: TRÊN TRỜI"
-		heightModeBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 150)
-	end
+	selectedHeightMode = selectedHeightMode + 1
+	if selectedHeightMode > 3 then selectedHeightMode = 1 end
+	applyLoadedVisuals()
 	if isTrackingActive then startFlying() end
 end)
 
 tanSatConnection = RunService.Heartbeat:Connect(function()
-	-- VÔ HIỆU HÓA TÀN SÁT KHI ĐANG CÓ NGƯỜI BỊ GHIM ĐỎ
-	if isTanSatActive and isTrackingActive and not hasPinnedPlayers() then
+	-- CHỈ TÀN SÁT KHI BẬT MODE 1 HOẶC 3
+	if (tanSatMode == 1 or tanSatMode == 3) and isTrackingActive and not hasPinnedPlayers() then
 		local tChar = selectedTargetPlayer and selectedTargetPlayer.Character
 		local tHum = tChar and tChar:FindFirstChildOfClass("Humanoid")
 		if not selectedTargetPlayer or not tHum or tHum.Health <= 0 then
@@ -653,16 +731,9 @@ tanSatConnection = RunService.Heartbeat:Connect(function()
 end)
 
 tanSatBtn.MouseButton1Click:Connect(function()
-	isTanSatActive = not isTanSatActive
-	if isTanSatActive then
-		tanSatBtn.Text = "CHẾ ĐỘ TÀN SÁT: ON"
-		tanSatBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-		tanSatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	else
-		tanSatBtn.Text = "CHẾ ĐỘ TÀN SÁT: OFF"
-		tanSatBtn.BackgroundColor3 = Color3.fromRGB(60, 20, 20)
-		tanSatBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-	end
+	tanSatMode = tanSatMode + 1
+	if tanSatMode > 3 then tanSatMode = 0 end
+	updateTanSatUI()
 end)
 
 --======================================================================
@@ -677,7 +748,6 @@ local function refreshPlayerList()
 			pBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 			pBtn.Text = p.DisplayName .. " (@" .. p.Name .. ")"
 			
-			-- Khởi tạo lại giao diện hiển thị nếu người chơi này đã nằm trong bảng ghim trước đó
 			if pinnedPlayers[p] then
 				pBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
 			else
@@ -687,17 +757,12 @@ local function refreshPlayerList()
 			pBtn.Font = Enum.Font.SourceSans
 			pBtn.TextSize = 13
 			pBtn.Parent = playerListFrame
-			
-			local btnRound = Instance.new("UICorner")
-			btnRound.CornerRadius = UDim.new(0, 4)
-			btnRound.Parent = pBtn
+			Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0, 4)
 			
 			pBtn.MouseButton1Click:Connect(function()
 				if pinnedPlayers[p] then
-					-- LẦN 3: Hủy trạng thái ghim đỏ hoàn toàn
 					pinnedPlayers[p] = nil
 					pBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-					pBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 					updatePinnedOrder()
 					if selectedTargetPlayer == p and not hasPinnedPlayers() then
 						stopFlying()
@@ -705,30 +770,21 @@ local function refreshPlayerList()
 						targetStatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 					end
 				elseif selectedTargetPlayer == p then
-					-- LẦN 2: Chuyển sang chế độ ghim đỏ
 					pinnedPlayers[p] = true
 					pBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
-					pBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 					updatePinnedOrder()
 				else
-					-- LẦN 1: Chọn mục tiêu bình thường (Xanh dương)
 					selectedTargetPlayer = p
 					targetStatusLabel.Text = "Mục tiêu: " .. p.Name
 					targetStatusLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
+					pBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+					
+					-- Refresh button colors visual safely
 					for _, b in pairs(playerListFrame:GetChildren()) do
-						if b:IsA("TextButton") then 
-							local associatedPlayer = nil
-							for _, pl in pairs(Players:GetPlayers()) do
-								if b.Text:find("@" .. pl.Name) then associatedPlayer = pl break end
-							end
-							if associatedPlayer and pinnedPlayers[associatedPlayer] then
-								b.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-							else
-								b.BackgroundColor3 = Color3.fromRGB(60, 60, 60) 
-							end
+						if b:IsA("TextButton") and b ~= pBtn then 
+							b.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 						end
 					end
-					pBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
 				end
 			end)
 		end
@@ -743,7 +799,7 @@ Players.PlayerRemoving:Connect(function(player)
 		updatePinnedOrder()
 	end
 	if selectedTargetPlayer == player then 
-		if isTanSatActive or hasPinnedPlayers() then selectedTargetPlayer = nil else stopFlying() end
+		if (tanSatMode == 1 or tanSatMode == 3) or hasPinnedPlayers() then selectedTargetPlayer = nil else stopFlying() end
 	end
 	refreshPlayerList()
 end)
@@ -809,6 +865,8 @@ toggleBtn.MouseButton1Click:Connect(function()
 		toggleBtn.Text = "_"
 		toggleBtn.Position = UDim2.new(1, -38, 0, 5) 
 		
+		saveBtn.Visible = true
+		loadBtn.Visible = true
 		playerListFrame.Visible = true
 		speedInput.Visible = true
 		distanceInput.Visible = true
@@ -821,16 +879,15 @@ toggleBtn.MouseButton1Click:Connect(function()
 		targetStatusLabel.Visible = true
 		titleLabel.Visible = true
 		
-		TweenService:Create(mainFrame, tweenInfo, {
-			Size = UDim2.new(0, 250, 0, 485), 
-			Position = lastSavedPosition 
-		}):Play()
+		TweenService:Create(mainFrame, tweenInfo, { Size = UDim2.new(0, 250, 0, 485), Position = lastSavedPosition }):Play()
 	else
 		lastSavedPosition = mainFrame.Position
 		
 		toggleBtn.Text = "+"
 		toggleBtn.Position = UDim2.new(0, 5, 0, 5) 
 		
+		saveBtn.Visible = false
+		loadBtn.Visible = false
 		playerListFrame.Visible = false
 		speedInput.Visible = false
 		distanceInput.Visible = false
@@ -843,8 +900,6 @@ toggleBtn.MouseButton1Click:Connect(function()
 		targetStatusLabel.Visible = false
 		titleLabel.Visible = false
 		
-		TweenService:Create(mainFrame, tweenInfo, {
-			Size = UDim2.new(0, 42, 0, 42) 
-		}):Play()
+		TweenService:Create(mainFrame, tweenInfo, { Size = UDim2.new(0, 42, 0, 42) }):Play()
 	end
 end)
