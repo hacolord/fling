@@ -483,18 +483,21 @@ local function stopFlying()
 	modeVangTimer = 0
 	
 	Camera.CameraType = Enum.CameraType.Custom
-	local myHum = localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid")
+	local char = localPlayer.Character
+	local myHum = char and char:FindFirstChildOfClass("Humanoid")
 	if myHum then Camera.CameraSubject = myHum end
 	
-	local char = localPlayer.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if root then
 		root.AssemblyLinearVelocity = Vector3.new(0,0,0)
 		root.AssemblyAngularVelocity = Vector3.new(0,0,0)
 	end
-	if hum then
-		hum:ChangeState(Enum.HumanoidStateType.Running)
+	if myHum then
+		-- [SỬA ĐỔI]: Mở khóa trạng thái khi tắt bay để có thể đi lại bình thường
+		myHum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+		myHum:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
+		myHum:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, true)
+		myHum:ChangeState(Enum.HumanoidStateType.Running)
 	end
 end
 
@@ -609,7 +612,13 @@ local function startFlying()
 		if selectedNetMode == 2 or selectedNetMode == 4 then
 			if isTemporarilySleeping then
 				sleepTimer = sleepTimer + deltaTime
-				if myHum then myHum:ChangeState(Enum.HumanoidStateType.Running) end
+				if myHum then 
+					-- [SỬA ĐỔI]: Tạm mở khóa trạng thái Đi bộ để gửi tín hiệu đánh lừa Anti-cheat
+					myHum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+					myHum:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
+					myHum:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, true)
+					myHum:ChangeState(Enum.HumanoidStateType.Running) 
+				end
 				settings().Network.IncomingReplicationLag = 0
 				if sleepTimer >= 0.25 then
 					isTemporarilySleeping = false
@@ -625,6 +634,14 @@ local function startFlying()
 					return
 				end
 			end
+		end
+
+		-- [SỬA ĐỔI]: Khóa vĩnh viễn trạng thái chạm đất và ép trạng thái rơi (Khi không ở chế độ ngủ bypass)
+		if not isTemporarilySleeping and myHum then
+			myHum:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+			myHum:SetStateEnabled(Enum.HumanoidStateType.Landed, false)
+			myHum:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, false)
+			myHum:ChangeState(Enum.HumanoidStateType.Freefall)
 		end
 
 		local horizontalDist = tonumber(distanceInput.Text) or 4.5
@@ -657,9 +674,7 @@ local function startFlying()
 		end
 		
 		if isUsingChaseMode and currentDistance > 10 then
-			if myHum then myHum:ChangeState(Enum.HumanoidStateType.Running) end
 			settings().Network.IncomingReplicationLag = 0
-			
 			local chaseSpeed = tonumber(flySpeedInput.Text) or 150
 			local targetTargetPos = targetPositionBase + Vector3.new(0, verticalDist, 0)
 			local direction = (targetTargetPos - myRoot.Position).Unit
@@ -668,10 +683,8 @@ local function startFlying()
 			myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
 			myRoot.CFrame = CFrame.new(myRoot.Position, targetPositionBase)
 		else
-			if myHum then myHum:ChangeState(Enum.HumanoidStateType.Physics) end
 			myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 			myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-			
 			settings().Network.IncomingReplicationLag = 0.12
 			
 			local userSpeed = tonumber(speedInput.Text) or 120
@@ -773,17 +786,14 @@ manualFlyBtn.MouseButton1Click:Connect(function()
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		
 		if root and hum then
-			-- Bật PlatformStand để ngắt ma sát và hoạt ảnh bước đi (Ngăn bị đất đè xuống)
-			hum.PlatformStand = true 
+			hum.PlatformStand = false 
 			
-			-- Tạo BodyVelocity siêu khỏe để bay lơ lửng chống hoàn toàn trọng lực
 			manualFlyBv = Instance.new("BodyVelocity")
 			manualFlyBv.Name = "GhostFlyBV"
 			manualFlyBv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
 			manualFlyBv.Velocity = Vector3.new(0, 0, 0)
 			manualFlyBv.Parent = root
 			
-			-- Tạo BodyGyro giữ nhân vật luôn thăng bằng, xoay theo góc nhìn
 			manualFlyBg = Instance.new("BodyGyro")
 			manualFlyBg.Name = "GhostFlyBG"
 			manualFlyBg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
@@ -797,27 +807,30 @@ manualFlyBtn.MouseButton1Click:Connect(function()
 				local h = c and c:FindFirstChildOfClass("Humanoid")
 				
 				if r and h and manualFlyBv and manualFlyBg then
-					local moveDir = h.MoveDirection -- Nút điều hướng trên màn hình điện thoại
+					-- [SỬA ĐỔI]: Khóa chặt trạng thái Đi Bộ và ép Rơi ở từng khung hình
+					h:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+					h:SetStateEnabled(Enum.HumanoidStateType.Landed, false)
+					h:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, false)
+					h:ChangeState(Enum.HumanoidStateType.Freefall) 
+					
+					local moveDir = h.MoveDirection 
 					local fSpeed = tonumber(flySpeedInput.Text) or 150
 					
 					if moveDir.Magnitude > 0 then
-						-- Công thức map Joystick thành Camera 3D
 						local flatLook = Vector3.new(Camera.CFrame.LookVector.X, 0, Camera.CFrame.LookVector.Z)
-						if flatLook.Magnitude < 0.01 then -- Fix lỗi cắm thẳng mặt xuống hoặc nhìn thẳng lên
+						if flatLook.Magnitude < 0.01 then 
 							flatLook = Vector3.new(Camera.CFrame.UpVector.X, 0, Camera.CFrame.UpVector.Z)
 						end
 						
 						local flatCam = CFrame.lookAt(Vector3.zero, flatLook)
 						local rawInput = flatCam:VectorToObjectSpace(moveDir) 
 						
-						-- Cấp lực đẩy dựa theo hướng nhìn của mắt Camera
 						local flyDir = Camera.CFrame:VectorToWorldSpace(Vector3.new(rawInput.X, 0, rawInput.Z))
 						manualFlyBv.Velocity = flyDir.Unit * fSpeed
 					else
 						manualFlyBv.Velocity = Vector3.new(0, 0, 0)
 					end
 					
-					-- Luôn xoay nhân vật cùng hướng với Camera
 					manualFlyBg.CFrame = CFrame.new(r.Position, r.Position + Camera.CFrame.LookVector * Vector3.new(1,0,1))
 				end
 			end)
@@ -837,7 +850,10 @@ manualFlyBtn.MouseButton1Click:Connect(function()
 		local char = localPlayer.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		if hum then 
-			-- Tắt PlatformStand để nhân vật rơi xuống tự nhiên và bước đi bình thường
+			-- [SỬA ĐỔI]: Mở khóa trạng thái đi bộ để hoạt động bình thường khi tắt Fly
+			hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+			hum:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
+			hum:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, true)
 			hum.PlatformStand = false 
 			hum:ChangeState(Enum.HumanoidStateType.GettingUp)
 		end
