@@ -106,7 +106,7 @@ listLayout.Parent = playerListFrame
 
 local speedInput = Instance.new("TextBox")
 speedInput.Name = "SpeedInput"
-speedInput.Size = UDim2.new(0, 170, 0, 32) -- Đã sửa nhỏ lại để nhường chỗ
+speedInput.Size = UDim2.new(0, 210, 0, 32) 
 speedInput.Position = UDim2.new(0, 20, 0, 152)
 speedInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 speedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -117,21 +117,6 @@ speedInput.TextSize = 14
 speedInput.ClearTextOnFocus = false
 speedInput.Parent = mainFrame
 Instance.new("UICorner", speedInput).CornerRadius = UDim.new(0, 6)
-
--- Thêm thanh nhập số cạnh chiếm 1/6 diện tích
-local sidesInput = Instance.new("TextBox")
-sidesInput.Name = "SidesInput"
-sidesInput.Size = UDim2.new(0, 35, 0, 32) 
-sidesInput.Position = UDim2.new(0, 195, 0, 152)
-sidesInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-sidesInput.TextColor3 = Color3.fromRGB(255, 200, 0)
-sidesInput.PlaceholderText = "Cạnh"
-sidesInput.Text = "0" 
-sidesInput.Font = Enum.Font.SourceSansBold
-sidesInput.TextSize = 14
-sidesInput.ClearTextOnFocus = false
-sidesInput.Parent = mainFrame
-Instance.new("UICorner", sidesInput).CornerRadius = UDim.new(0, 6)
 
 local distanceInput = Instance.new("TextBox")
 distanceInput.Name = "DistanceInput"
@@ -312,6 +297,10 @@ local modeVangTimer = 0
 local isTemporarilySleeping = false
 local sleepTimer = 0
 
+-- LOGIC CỦA TRACKER ORBIT (DÙNG BODYVELOCITY + BODYGYRO)
+local trackBv = nil
+local trackBg = nil
+
 -- LOGIC CỦA MINI GUI FLY
 local isManualFlyEnabled = false
 local manualFlyConnection = nil
@@ -394,7 +383,6 @@ end
 saveBtn.MouseButton1Click:Connect(function()
 	local dataToSave = {
 		sp = speedInput.Text,
-		sd = sidesInput.Text, -- Cập nhật lưu thêm cạnh
 		di = distanceInput.Text,
 		hi = heightInput.Text,
 		fs = flySpeedInput.Text,
@@ -429,7 +417,6 @@ loadBtn.MouseButton1Click:Connect(function()
 		if json then
 			local data = HttpService:JSONDecode(json)
 			speedInput.Text = data.sp or "120"
-			sidesInput.Text = data.sd or "0" -- Cập nhật tải thêm cạnh
 			distanceInput.Text = data.di or "4.5"
 			heightInput.Text = data.hi or "8"
 			flySpeedInput.Text = data.fs or "150"
@@ -448,7 +435,6 @@ loadBtn.MouseButton1Click:Connect(function()
 	end)
 end)
 
---======================================================================
 local function hasPinnedPlayers()
 	for p, _ in pairs(pinnedPlayers) do
 		if p and p.Parent == Players then return true end
@@ -495,6 +481,10 @@ local function stopFlying()
 	if flyConnection then flyConnection:Disconnect() flyConnection = nil end
 	if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
 	
+	-- Dọn dẹp đồ nghề BodyVelocity Orbit
+	if trackBv then trackBv:Destroy() trackBv = nil end
+	if trackBg then trackBg:Destroy() trackBg = nil end
+	
 	settings().Network.IncomingReplicationLag = 0
 	isTemporarilySleeping = false
 	modeVangTimer = 0
@@ -510,7 +500,6 @@ local function stopFlying()
 		root.AssemblyAngularVelocity = Vector3.new(0,0,0)
 	end
 	if myHum then
-		-- [SỬA ĐỔI]: Mở khóa trạng thái khi tắt bay để có thể đi lại bình thường
 		myHum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
 		myHum:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
 		myHum:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, true)
@@ -536,6 +525,23 @@ local function startFlying()
 	isTrackingActive = true
 	modeVangTimer = 0
 	isTemporarilySleeping = false
+	
+	-- KHỞI TẠO BODYVELOCITY CHO ORBIT TRƯỚC KHI BAY
+	if trackBv then trackBv:Destroy() end
+	if trackBg then trackBg:Destroy() end
+	
+	trackBv = Instance.new("BodyVelocity")
+	trackBv.Name = "OrbitBV"
+	trackBv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+	trackBv.Velocity = Vector3.new(0, 0, 0)
+	trackBv.Parent = root
+	
+	trackBg = Instance.new("BodyGyro")
+	trackBg.Name = "OrbitBG"
+	trackBg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+	trackBg.P = 9e4
+	trackBg.CFrame = root.CFrame
+	trackBg.Parent = root
 	
 	if selectedHeightMode == 1 then
 		actionBtn.Text = "TRACK\nSKY"
@@ -565,9 +571,6 @@ local function startFlying()
 		local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 		local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
 		
-		-- ==============================================
-		-- TẠM DỪNG TRACKER KHI ĐANG BẬT FLY MINI GUI 2
-		-- ==============================================
 		if isManualFlyEnabled then return end 
 		
 		if hasPinnedPlayers() then
@@ -605,10 +608,7 @@ local function startFlying()
 				if not foundNext then
 					targetStatusLabel.Text = "Ghim: Chờ mục tiêu hồi sinh..."
 					targetStatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-					if myRoot then
-						myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-						myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-					end
+					if trackBv then trackBv.Velocity = Vector3.new(0, 0, 0) end
 					return
 				end
 			else
@@ -630,7 +630,6 @@ local function startFlying()
 			if isTemporarilySleeping then
 				sleepTimer = sleepTimer + deltaTime
 				if myHum then 
-					-- [SỬA ĐỔI]: Tạm mở khóa trạng thái Đi bộ để gửi tín hiệu đánh lừa Anti-cheat
 					myHum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
 					myHum:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
 					myHum:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, true)
@@ -653,7 +652,6 @@ local function startFlying()
 			end
 		end
 
-		-- [SỬA ĐỔI]: Khóa vĩnh viễn trạng thái chạm đất và ép trạng thái rơi (Khi không ở chế độ ngủ bypass)
 		if not isTemporarilySleeping and myHum then
 			myHum:SetStateEnabled(Enum.HumanoidStateType.Running, false)
 			myHum:SetStateEnabled(Enum.HumanoidStateType.Landed, false)
@@ -694,14 +692,13 @@ local function startFlying()
 			settings().Network.IncomingReplicationLag = 0
 			local chaseSpeed = tonumber(flySpeedInput.Text) or 150
 			local targetTargetPos = targetPositionBase + Vector3.new(0, verticalDist, 0)
-			local direction = (targetTargetPos - myRoot.Position).Unit
 			
-			myRoot.AssemblyLinearVelocity = direction * chaseSpeed
-			myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-			myRoot.CFrame = CFrame.new(myRoot.Position, targetPositionBase)
+			if trackBv and trackBg then
+				local direction = (targetTargetPos - myRoot.Position).Unit
+				trackBv.Velocity = direction * chaseSpeed
+				trackBg.CFrame = CFrame.new(myRoot.Position, targetPositionBase)
+			end
 		else
-			myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-			myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
 			settings().Network.IncomingReplicationLag = 0.12
 			
 			local userSpeed = tonumber(speedInput.Text) or 120
@@ -711,34 +708,8 @@ local function startFlying()
 				local angularVelocity = userSpeed / horizontalDist
 				currentAngle = currentAngle + (angularVelocity * deltaTime)
 				
-				local sides = tonumber(sidesInput.Text) or 0
-				local targetX, targetZ
-				
-				if sides >= 3 then
-					-- Logic đa giác: Tính toán vị trí nội suy trên cạnh của đa giác N cạnh
-					local sectorAngle = (math.pi * 2) / sides
-					local sectorIndex = math.floor(currentAngle / sectorAngle)
-					local angle1 = sectorIndex * sectorAngle
-					local angle2 = (sectorIndex + 1) * sectorAngle
-					
-					-- Điểm đầu và điểm cuối của đoạn thẳng hiện tại
-					local p1X = math.sin(angle1) * horizontalDist
-					local p1Z = math.cos(angle1) * horizontalDist
-					local p2X = math.sin(angle2) * horizontalDist
-					local p2Z = math.cos(angle2) * horizontalDist
-					
-					-- Tính phần trăm tiến trình trên đoạn thẳng
-					local progress = (currentAngle % sectorAngle) / sectorAngle
-					
-					-- Nội suy vị trí tuyến tính giữa 2 đỉnh
-					targetX = targetPositionBase.X + (p1X + (p2X - p1X) * progress)
-					targetZ = targetPositionBase.Z + (p1Z + (p2Z - p1Z) * progress)
-				else
-					-- Logic hình tròn mượt mặc định (nếu số cạnh < 3 hoặc để 0)
-					targetX = targetPositionBase.X + (math.sin(currentAngle) * horizontalDist)
-					targetZ = targetPositionBase.Z + (math.cos(currentAngle) * horizontalDist)
-				end
-				
+				local targetX = targetPositionBase.X + (math.sin(currentAngle) * horizontalDist)
+				local targetZ = targetPositionBase.Z + (math.cos(currentAngle) * horizontalDist)
 				local targetY = targetPositionBase.Y + verticalDist 
 				
 				nextCFramePosition = Vector3.new(targetX, targetY, targetZ)
@@ -749,7 +720,14 @@ local function startFlying()
 				nextCFramePosition = targetPositionBase + Vector3.new(0, verticalDist, 0)
 			end
 			
-			myRoot.CFrame = CFrame.new(nextCFramePosition, targetPositionBase)
+			-- BẢN CHẤT LÕI: DÙNG BODYVELOCITY KÉO VÀO ĐIỂM XOAY VÒNG
+			if trackBv and trackBg then
+				-- Hệ số kéo (40) đủ lớn để hút chặt vào quỹ đạo tròn
+				-- Nhưng vì dùng Velocity nên Server tự tính toán nội suy siêu mượt
+				local pullForce = 40
+				trackBv.Velocity = (nextCFramePosition - myRoot.Position) * pullForce
+				trackBg.CFrame = CFrame.new(myRoot.Position, targetPositionBase)
+			end
 		end
 	end)
 	
@@ -850,7 +828,6 @@ manualFlyBtn.MouseButton1Click:Connect(function()
 				local h = c and c:FindFirstChildOfClass("Humanoid")
 				
 				if r and h and manualFlyBv and manualFlyBg then
-					-- [SỬA ĐỔI]: Khóa chặt trạng thái Đi Bộ và ép Rơi ở từng khung hình
 					h:SetStateEnabled(Enum.HumanoidStateType.Running, false)
 					h:SetStateEnabled(Enum.HumanoidStateType.Landed, false)
 					h:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, false)
@@ -893,7 +870,6 @@ manualFlyBtn.MouseButton1Click:Connect(function()
 		local char = localPlayer.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		if hum then 
-			-- [SỬA ĐỔI]: Mở khóa trạng thái đi bộ để hoạt động bình thường khi tắt Fly
 			hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
 			hum:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
 			hum:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, true)
@@ -1036,7 +1012,6 @@ toggleBtn.MouseButton1Click:Connect(function()
 		loadBtn.Visible = true
 		playerListFrame.Visible = true
 		speedInput.Visible = true
-		sidesInput.Visible = true -- Cập nhật hiển thị ô số cạnh
 		distanceInput.Visible = true
 		heightInput.Visible = true
 		flySpeedInput.Visible = true
@@ -1058,7 +1033,6 @@ toggleBtn.MouseButton1Click:Connect(function()
 		loadBtn.Visible = false
 		playerListFrame.Visible = false
 		speedInput.Visible = false
-		sidesInput.Visible = false -- Cập nhật ẩn ô số cạnh
 		distanceInput.Visible = false
 		heightInput.Visible = false
 		flySpeedInput.Visible = false
