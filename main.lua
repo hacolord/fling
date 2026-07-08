@@ -106,7 +106,7 @@ listLayout.Parent = playerListFrame
 
 local speedInput = Instance.new("TextBox")
 speedInput.Name = "SpeedInput"
-speedInput.Size = UDim2.new(0, 210, 0, 32) 
+speedInput.Size = UDim2.new(0, 170, 0, 32) -- Đã sửa nhỏ lại để nhường chỗ
 speedInput.Position = UDim2.new(0, 20, 0, 152)
 speedInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 speedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -117,6 +117,21 @@ speedInput.TextSize = 14
 speedInput.ClearTextOnFocus = false
 speedInput.Parent = mainFrame
 Instance.new("UICorner", speedInput).CornerRadius = UDim.new(0, 6)
+
+-- Thêm thanh nhập số cạnh chiếm 1/6 diện tích
+local sidesInput = Instance.new("TextBox")
+sidesInput.Name = "SidesInput"
+sidesInput.Size = UDim2.new(0, 35, 0, 32) 
+sidesInput.Position = UDim2.new(0, 195, 0, 152)
+sidesInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+sidesInput.TextColor3 = Color3.fromRGB(255, 200, 0)
+sidesInput.PlaceholderText = "Cạnh"
+sidesInput.Text = "0" 
+sidesInput.Font = Enum.Font.SourceSansBold
+sidesInput.TextSize = 14
+sidesInput.ClearTextOnFocus = false
+sidesInput.Parent = mainFrame
+Instance.new("UICorner", sidesInput).CornerRadius = UDim.new(0, 6)
 
 local distanceInput = Instance.new("TextBox")
 distanceInput.Name = "DistanceInput"
@@ -379,6 +394,7 @@ end
 saveBtn.MouseButton1Click:Connect(function()
 	local dataToSave = {
 		sp = speedInput.Text,
+		sd = sidesInput.Text, -- Cập nhật lưu thêm cạnh
 		di = distanceInput.Text,
 		hi = heightInput.Text,
 		fs = flySpeedInput.Text,
@@ -413,6 +429,7 @@ loadBtn.MouseButton1Click:Connect(function()
 		if json then
 			local data = HttpService:JSONDecode(json)
 			speedInput.Text = data.sp or "120"
+			sidesInput.Text = data.sd or "0" -- Cập nhật tải thêm cạnh
 			distanceInput.Text = data.di or "4.5"
 			heightInput.Text = data.hi or "8"
 			flySpeedInput.Text = data.fs or "150"
@@ -694,8 +711,34 @@ local function startFlying()
 				local angularVelocity = userSpeed / horizontalDist
 				currentAngle = currentAngle + (angularVelocity * deltaTime)
 				
-				local targetX = targetPositionBase.X + (math.sin(currentAngle) * horizontalDist)
-				local targetZ = targetPositionBase.Z + (math.cos(currentAngle) * horizontalDist)
+				local sides = tonumber(sidesInput.Text) or 0
+				local targetX, targetZ
+				
+				if sides >= 3 then
+					-- Logic đa giác: Tính toán vị trí nội suy trên cạnh của đa giác N cạnh
+					local sectorAngle = (math.pi * 2) / sides
+					local sectorIndex = math.floor(currentAngle / sectorAngle)
+					local angle1 = sectorIndex * sectorAngle
+					local angle2 = (sectorIndex + 1) * sectorAngle
+					
+					-- Điểm đầu và điểm cuối của đoạn thẳng hiện tại
+					local p1X = math.sin(angle1) * horizontalDist
+					local p1Z = math.cos(angle1) * horizontalDist
+					local p2X = math.sin(angle2) * horizontalDist
+					local p2Z = math.cos(angle2) * horizontalDist
+					
+					-- Tính phần trăm tiến trình trên đoạn thẳng
+					local progress = (currentAngle % sectorAngle) / sectorAngle
+					
+					-- Nội suy vị trí tuyến tính giữa 2 đỉnh
+					targetX = targetPositionBase.X + (p1X + (p2X - p1X) * progress)
+					targetZ = targetPositionBase.Z + (p1Z + (p2Z - p1Z) * progress)
+				else
+					-- Logic hình tròn mượt mặc định (nếu số cạnh < 3 hoặc để 0)
+					targetX = targetPositionBase.X + (math.sin(currentAngle) * horizontalDist)
+					targetZ = targetPositionBase.Z + (math.cos(currentAngle) * horizontalDist)
+				end
+				
 				local targetY = targetPositionBase.Y + verticalDist 
 				
 				nextCFramePosition = Vector3.new(targetX, targetY, targetZ)
@@ -993,6 +1036,7 @@ toggleBtn.MouseButton1Click:Connect(function()
 		loadBtn.Visible = true
 		playerListFrame.Visible = true
 		speedInput.Visible = true
+		sidesInput.Visible = true -- Cập nhật hiển thị ô số cạnh
 		distanceInput.Visible = true
 		heightInput.Visible = true
 		flySpeedInput.Visible = true
@@ -1014,6 +1058,7 @@ toggleBtn.MouseButton1Click:Connect(function()
 		loadBtn.Visible = false
 		playerListFrame.Visible = false
 		speedInput.Visible = false
+		sidesInput.Visible = false -- Cập nhật ẩn ô số cạnh
 		distanceInput.Visible = false
 		heightInput.Visible = false
 		flySpeedInput.Visible = false
