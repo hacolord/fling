@@ -760,7 +760,8 @@ local function startFlying()
 			
 			if selectedDirMode == 1 then
 				local angularVelocity = userSpeed / horizontalDist
-				currentAngle = currentAngle + (angularVelocity * deltaTime)
+				-- [SỬA ĐỔI]: Chuẩn hóa góc quay trong phạm vi [0, 2pi] để loại bỏ sai số dấu phẩy động tích lũy khi chạy tốc độ cao
+				currentAngle = (currentAngle + (angularVelocity * deltaTime)) % (math.pi * 2)
 				
 				local sides = tonumber(sidesInput.Text) or 0
 				local targetX, targetZ
