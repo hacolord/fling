@@ -4,6 +4,8 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
+local defaultGravity = workspace.Gravity -- [SỬA LỖI 3]: Lưu lại trọng lực mặc định của server
+
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
 local Camera = workspace.CurrentCamera
@@ -199,10 +201,24 @@ directionModeBtn.TextSize = 11
 directionModeBtn.Parent = mainFrame
 Instance.new("UICorner", directionModeBtn).CornerRadius = UDim.new(0, 6)
 
+-- THÊM GUI: NÚT TẠO BAY (Màu Cam) - Thay thế chỗ tự động hủy
+local orangeCreateBtn = Instance.new("TextButton")
+orangeCreateBtn.Name = "OrangeCreateBtn"
+orangeCreateBtn.Size = UDim2.new(0, 32, 0, 32)
+orangeCreateBtn.Position = UDim2.new(0, 20, 0, 347)
+orangeCreateBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+orangeCreateBtn.Text = "TẠO\nCAM"
+orangeCreateBtn.TextColor3 = Color3.fromRGB(255, 120, 0)
+orangeCreateBtn.Font = Enum.Font.SourceSansBold
+orangeCreateBtn.TextSize = 11
+orangeCreateBtn.Parent = mainFrame
+Instance.new("UICorner", orangeCreateBtn).CornerRadius = UDim.new(0, 6)
+
+-- THAY ĐỔI GUI: Thu nhỏ nút Net Mode để nhường chỗ 2 bên
 local netModeBtn = Instance.new("TextButton")
 netModeBtn.Name = "NetModeBtn"
-netModeBtn.Size = UDim2.new(0, 210, 0, 32)
-netModeBtn.Position = UDim2.new(0, 20, 0, 347)
+netModeBtn.Size = UDim2.new(0, 138, 0, 32)
+netModeBtn.Position = UDim2.new(0, 56, 0, 347)
 netModeBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
 netModeBtn.Text = "NET: NORMAL"
 netModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -210,6 +226,19 @@ netModeBtn.Font = Enum.Font.SourceSansBold
 netModeBtn.TextSize = 12
 netModeBtn.Parent = mainFrame
 Instance.new("UICorner", netModeBtn).CornerRadius = UDim.new(0, 6)
+
+-- THÊM GUI: NÚT TẠO BAY (Màu Tím) - Thay thế chỗ khoảng cách hủy
+local purpleCreateBtn = Instance.new("TextButton")
+purpleCreateBtn.Name = "PurpleCreateBtn"
+purpleCreateBtn.Size = UDim2.new(0, 32, 0, 32)
+purpleCreateBtn.Position = UDim2.new(0, 198, 0, 347)
+purpleCreateBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+purpleCreateBtn.Text = "TẠO\nTÍM"
+purpleCreateBtn.TextColor3 = Color3.fromRGB(150, 0, 255)
+purpleCreateBtn.Font = Enum.Font.SourceSansBold
+purpleCreateBtn.TextSize = 11
+purpleCreateBtn.Parent = mainFrame
+Instance.new("UICorner", purpleCreateBtn).CornerRadius = UDim.new(0, 6)
 
 -- THANH GHI KIỂM TRA VẬN TỐC (TRÁI)
 local velCheckInput = Instance.new("TextBox")
@@ -297,27 +326,51 @@ actionBtn.TextSize = 11
 actionBtn.Parent = widgetFrame
 Instance.new("UICorner", actionBtn).CornerRadius = UDim.new(0, 10)
 
--- MINI GUI 2 (FLY DI CHUYỂN MANUAL CHUẨN GHOST HUB)
-local manualFlyWidget = Instance.new("Frame")
-manualFlyWidget.Name = "ManualFlyWidget"
-manualFlyWidget.Size = UDim2.new(0, 50, 0, 50) 
-manualFlyWidget.Position = UDim2.new(0.5, 200, 0.5, -25) 
-manualFlyWidget.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-manualFlyWidget.BorderSizePixel = 0
-manualFlyWidget.Active = true
-manualFlyWidget.Parent = screenGui
-Instance.new("UICorner", manualFlyWidget).CornerRadius = UDim.new(0, 10)
+-- MINI GUI: FLY MÀU CAM (CHẾ ĐỘ THƯỜNG - LINEAR VELOCITY)
+local orangeWidget = Instance.new("Frame")
+orangeWidget.Name = "OrangeWidget"
+orangeWidget.Size = UDim2.new(0, 50, 0, 50) 
+orangeWidget.Position = UDim2.new(0.5, 200, 0.5, -25) 
+orangeWidget.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+orangeWidget.BorderSizePixel = 0
+orangeWidget.Active = true
+orangeWidget.Visible = false
+orangeWidget.Parent = screenGui
+Instance.new("UICorner", orangeWidget).CornerRadius = UDim.new(0, 10)
 
-local manualFlyBtn = Instance.new("TextButton")
-manualFlyBtn.Name = "ManualFlyBtn"
-manualFlyBtn.Size = UDim2.new(1, 0, 1, 0) 
-manualFlyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-manualFlyBtn.Text = "FLY\nOFF"
-manualFlyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-manualFlyBtn.Font = Enum.Font.SourceSansBold
-manualFlyBtn.TextSize = 11 
-manualFlyBtn.Parent = manualFlyWidget
-Instance.new("UICorner", manualFlyBtn).CornerRadius = UDim.new(0, 10)
+local orangeFlyBtn = Instance.new("TextButton")
+orangeFlyBtn.Name = "OrangeFlyBtn"
+orangeFlyBtn.Size = UDim2.new(1, 0, 1, 0) 
+orangeFlyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+orangeFlyBtn.Text = "CAM\nOFF"
+orangeFlyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+orangeFlyBtn.Font = Enum.Font.SourceSansBold
+orangeFlyBtn.TextSize = 11 
+orangeFlyBtn.Parent = orangeWidget
+Instance.new("UICorner", orangeFlyBtn).CornerRadius = UDim.new(0, 10)
+
+-- MINI GUI: FLY MÀU TÍM (CHẾ ĐỘ CFRAME)
+local purpleWidget = Instance.new("Frame")
+purpleWidget.Name = "PurpleWidget"
+purpleWidget.Size = UDim2.new(0, 50, 0, 50) 
+purpleWidget.Position = UDim2.new(0.5, 260, 0.5, -25) 
+purpleWidget.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+purpleWidget.BorderSizePixel = 0
+purpleWidget.Active = true
+purpleWidget.Visible = false
+purpleWidget.Parent = screenGui
+Instance.new("UICorner", purpleWidget).CornerRadius = UDim.new(0, 10)
+
+local purpleFlyBtn = Instance.new("TextButton")
+purpleFlyBtn.Name = "PurpleFlyBtn"
+purpleFlyBtn.Size = UDim2.new(1, 0, 1, 0) 
+purpleFlyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+purpleFlyBtn.Text = "TÍM\nOFF"
+purpleFlyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+purpleFlyBtn.Font = Enum.Font.SourceSansBold
+purpleFlyBtn.TextSize = 11 
+purpleFlyBtn.Parent = purpleWidget
+Instance.new("UICorner", purpleFlyBtn).CornerRadius = UDim.new(0, 10)
 
 --======================================================================
 -- 2. ĐỘNG CƠ TÍNH TOÁN LOGIC
@@ -331,7 +384,7 @@ local selectedNetMode = 1
 local tanSatMode = 0 
 
 local pinnedPlayers = {}      
-local pinnedOrder = {}        
+local pinnedOrder = {}  
 local currentPinnedIndex = 1  
 
 local flyConnection = nil         
@@ -342,11 +395,44 @@ local modeVangTimer = 0
 local isTemporarilySleeping = false
 local sleepTimer = 0
 
--- LOGIC CỦA MINI GUI FLY
-local isManualFlyEnabled = false
-local manualFlyConnection = nil
-local manualFlyBv = nil
-local manualFlyBg = nil
+-- LOGIC CỦA 2 MODE FLY MỚI
+local isOrangeCreated = false
+local isPurpleCreated = false
+
+local isOrangeFlyEnabled = false
+local orangeFlyConnection = nil
+
+local isPurpleFlyEnabled = false
+local purpleFlyConnection = nil
+
+-- Hàm khôi phục vật lý dùng chung khi tắt fly
+local function restorePhysicsIfNeeded()
+	if not isOrangeFlyEnabled and not isPurpleFlyEnabled then
+		workspace.Gravity = defaultGravity
+		if isTrackingActive and selectedTargetPlayer and selectedTargetPlayer.Character then
+			local tHum = selectedTargetPlayer.Character:FindFirstChildOfClass("Humanoid")
+			if tHum then Camera.CameraSubject = tHum end
+		else
+			local char = localPlayer.Character
+			local myHum = char and char:FindFirstChildOfClass("Humanoid")
+			if myHum then Camera.CameraSubject = myHum end
+		end
+		
+		local char = localPlayer.Character
+		local r = char and char:FindFirstChild("HumanoidRootPart")
+		local h = char and char:FindFirstChildOfClass("Humanoid")
+		if r then
+			r.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+			r.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+		end
+		if h then
+			h:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+			h:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
+			h:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, true)
+			h:ChangeState(Enum.HumanoidStateType.Running)
+		end
+	end
+end
 
 --======================================================================
 -- LƯU VÀ TẢI SETTINGS LOGIC
@@ -433,7 +519,9 @@ saveBtn.MouseButton1Click:Connect(function()
 		nm = selectedNetMode,
 		tm = tanSatMode,
 		vc = velCheckInput.Text,
-		pc = predCoeffInput.Text
+		pc = predCoeffInput.Text,
+		oc = isOrangeCreated,
+		pc_btn = isPurpleCreated
 	}
 	pcall(function()
 		local json = HttpService:JSONEncode(dataToSave)
@@ -475,6 +563,20 @@ loadBtn.MouseButton1Click:Connect(function()
 			tanSatMode = data.tm or 0
 			
 			applyLoadedVisuals()
+			
+			-- Khôi phục trạng thái nút tạo bay Cam
+			if data.oc then
+				isOrangeCreated = true
+				orangeCreateBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
+				orangeWidget.Visible = true
+			end
+			
+			-- Khôi phục trạng thái nút tạo bay Tím
+			if data.pc_btn then
+				isPurpleCreated = true
+				purpleCreateBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 200)
+				purpleWidget.Visible = true
+			end
 			
 			loadBtn.Text = "OK"
 			task.wait(0.6)
@@ -528,29 +630,12 @@ local function stopFlying()
 	actionBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 	
 	if flyConnection then flyConnection:Disconnect() flyConnection = nil end
-	if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
 	
 	settings().Network.IncomingReplicationLag = 0
 	isTemporarilySleeping = false
 	modeVangTimer = 0
 	
-	Camera.CameraType = Enum.CameraType.Custom
-	local char = localPlayer.Character
-	local myHum = char and char:FindFirstChildOfClass("Humanoid")
-	if myHum then Camera.CameraSubject = myHum end
-	
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if root then
-		root.AssemblyLinearVelocity = Vector3.new(0,0,0)
-		root.AssemblyAngularVelocity = Vector3.new(0,0,0)
-	end
-	if myHum then
-		-- [SỬA ĐỔI]: Mở khóa trạng thái khi tắt bay để có thể đi lại bình thường
-		myHum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
-		myHum:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
-		myHum:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, true)
-		myHum:ChangeState(Enum.HumanoidStateType.Running)
-	end
+	restorePhysicsIfNeeded()
 end
 
 local function startFlying()
@@ -601,9 +686,9 @@ local function startFlying()
 		local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
 		
 		-- ==============================================
-		-- TẠM DỪNG TRACKER KHI ĐANG BẬT FLY MINI GUI 2
+		-- ĐÓNG BĂNG TRACKER HOÀN TOÀN KHI BẬT FLY BẤT KỲ MODE NÀO
 		-- ==============================================
-		if isManualFlyEnabled then return end 
+		if isOrangeFlyEnabled or isPurpleFlyEnabled then return end 
 		
 		if hasPinnedPlayers() then
 			local currentTarget = pinnedOrder[currentPinnedIndex]
@@ -688,7 +773,7 @@ local function startFlying()
 			end
 		end
 
-		-- [SỬA ĐỔI]: Khóa vĩnh viễn trạng thái chạm đất và ép trạng thái rơi (Khi không ở chế độ ngủ bypass)
+		-- Khóa trạng thái chạm đất và ép trạng thái rơi (Khi không ở chế độ ngủ bypass)
 		if not isTemporarilySleeping and myHum then
 			myHum:SetStateEnabled(Enum.HumanoidStateType.Running, false)
 			myHum:SetStateEnabled(Enum.HumanoidStateType.Landed, false)
@@ -760,7 +845,7 @@ local function startFlying()
 			
 			if selectedDirMode == 1 then
 				local angularVelocity = userSpeed / horizontalDist
-				-- [SỬA ĐỔI]: Chuẩn hóa góc quay trong phạm vi [0, 2pi] để loại bỏ sai số dấu phẩy động tích lũy khi chạy tốc độ cao
+				-- Chuẩn hóa góc quay trong phạm vi [0, 2pi] để loại bỏ sai số dấu phẩy động
 				currentAngle = (currentAngle + (angularVelocity * deltaTime)) % (math.pi * 2)
 				
 				local sides = tonumber(sidesInput.Text) or 0
@@ -807,6 +892,8 @@ local function startFlying()
 	
 	if not noclipConnection then
 		noclipConnection = RunService.Stepped:Connect(function()
+			if isOrangeFlyEnabled or isPurpleFlyEnabled then return end 
+-- Tắt noclip khi đang sử dụng một trong 2 mode Fly
 			local myChar = localPlayer.Character
 			if myChar then
 				for _, part in pairs(myChar:GetChildren()) do
@@ -868,90 +955,195 @@ tanSatBtn.MouseButton1Click:Connect(function()
 end)
 
 --======================================================================
--- BỘ MÁY BAY MANUAL (GHOST HUB STYLE) - CHỐNG KẸT ĐẤT HOÀN TOÀN
+-- LOGIC NÚT TẠO BAY (BẢNG MAIN)
 --======================================================================
-manualFlyBtn.MouseButton1Click:Connect(function()
-	isManualFlyEnabled = not isManualFlyEnabled
-	if isManualFlyEnabled then
-		manualFlyBtn.BackgroundColor3 = Color3.fromRGB(255, 120, 0)
-		manualFlyBtn.Text = "FLY\nON"
+orangeCreateBtn.MouseButton1Click:Connect(function()
+	isOrangeCreated = not isOrangeCreated
+	if isOrangeCreated then
+		orangeCreateBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
+		orangeWidget.Visible = true
+	else
+		orangeCreateBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+		orangeWidget.Visible = false
+		if isOrangeFlyEnabled then
+			-- Ép tắt Fly khi hủy GUI
+			isOrangeFlyEnabled = false
+			orangeFlyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+			orangeFlyBtn.Text = "CAM\nOFF"
+			if orangeFlyConnection then 
+				orangeFlyConnection:Disconnect() 
+				orangeFlyConnection = nil 
+			end
+			restorePhysicsIfNeeded()
+		end
+	end
+end)
+
+purpleCreateBtn.MouseButton1Click:Connect(function()
+	isPurpleCreated = not isPurpleCreated
+	if isPurpleCreated then
+		purpleCreateBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 200)
+		purpleWidget.Visible = true
+	else
+		purpleCreateBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+		purpleWidget.Visible = false
+		if isPurpleFlyEnabled then
+			-- Ép tắt Fly khi hủy GUI
+			isPurpleFlyEnabled = false
+			purpleFlyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+			purpleFlyBtn.Text = "TÍM\nOFF"
+			if purpleFlyConnection then 
+				purpleFlyConnection:Disconnect() 
+				purpleFlyConnection = nil 
+			end
+			restorePhysicsIfNeeded()
+		end
+	end
+end)
+
+--======================================================================
+-- BỘ MÁY BAY MÀU CAM (CHẾ ĐỘ BÌNH THƯỜNG - LINEAR VELOCITY)
+-- Không dùng BodyMover, không dịch chuyển CFrame. Dùng hàm của Tracker.
+--======================================================================
+orangeFlyBtn.MouseButton1Click:Connect(function()
+	isOrangeFlyEnabled = not isOrangeFlyEnabled
+	if isOrangeFlyEnabled then
+		orangeFlyBtn.BackgroundColor3 = Color3.fromRGB(255, 120, 0)
+		orangeFlyBtn.Text = "CAM\nON"
 		
 		local char = localPlayer.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart")
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		
+		if hum then
+			Camera.CameraSubject = hum
+		end
+		
+		workspace.Gravity = 0
+		
 		if root and hum then
-			hum.PlatformStand = false 
+			hum.PlatformStand = false
 			
-			manualFlyBv = Instance.new("BodyVelocity")
-			manualFlyBv.Name = "GhostFlyBV"
-			manualFlyBv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-			manualFlyBv.Velocity = Vector3.new(0, 0, 0)
-			manualFlyBv.Parent = root
-			
-			manualFlyBg = Instance.new("BodyGyro")
-			manualFlyBg.Name = "GhostFlyBG"
-			manualFlyBg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-			manualFlyBg.P = 9e4
-			manualFlyBg.CFrame = root.CFrame
-			manualFlyBg.Parent = root
-
-			manualFlyConnection = RunService.RenderStepped:Connect(function()
+			orangeFlyConnection = RunService.RenderStepped:Connect(function(deltaTime)
 				local c = localPlayer.Character
 				local r = c and c:FindFirstChild("HumanoidRootPart")
 				local h = c and c:FindFirstChildOfClass("Humanoid")
 				
-				if r and h and manualFlyBv and manualFlyBg then
-					-- [SỬA ĐỔI]: Khóa chặt trạng thái Đi Bộ và ép Rơi ở từng khung hình
+				if r and h then
 					h:SetStateEnabled(Enum.HumanoidStateType.Running, false)
 					h:SetStateEnabled(Enum.HumanoidStateType.Landed, false)
 					h:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, false)
-					h:ChangeState(Enum.HumanoidStateType.Freefall) 
+					h:ChangeState(Enum.HumanoidStateType.Freefall)
 					
-					local moveDir = h.MoveDirection 
+					local moveDir = h.MoveDirection
 					local fSpeed = tonumber(flySpeedInput.Text) or 150
 					
+					local flatLook = Vector3.new(Camera.CFrame.LookVector.X, 0, Camera.CFrame.LookVector.Z)
+					if flatLook.Magnitude < 0.01 then
+						flatLook = Vector3.new(Camera.CFrame.UpVector.X, 0, Camera.CFrame.UpVector.Z)
+					end
+					flatLook = flatLook.Unit
+					
 					if moveDir.Magnitude > 0 then
-						local flatLook = Vector3.new(Camera.CFrame.LookVector.X, 0, Camera.CFrame.LookVector.Z)
-						if flatLook.Magnitude < 0.01 then 
-							flatLook = Vector3.new(Camera.CFrame.UpVector.X, 0, Camera.CFrame.UpVector.Z)
-						end
-						
 						local flatCam = CFrame.lookAt(Vector3.zero, flatLook)
-						local rawInput = flatCam:VectorToObjectSpace(moveDir) 
-						
+						local rawInput = flatCam:VectorToObjectSpace(moveDir)
 						local flyDir = Camera.CFrame:VectorToWorldSpace(Vector3.new(rawInput.X, 0, rawInput.Z))
-						manualFlyBv.Velocity = flyDir.Unit * fSpeed
+						
+						-- Sử dụng LinearVelocity thuần túy, không thiết lập vị trí CFrame
+						r.AssemblyLinearVelocity = flyDir.Unit * fSpeed
 					else
-						manualFlyBv.Velocity = Vector3.new(0, 0, 0)
+						r.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 					end
 					
-					manualFlyBg.CFrame = CFrame.new(r.Position, r.Position + Camera.CFrame.LookVector * Vector3.new(1,0,1))
+					-- Dùng CFrame kết hợp để xoay hướng người chơi theo camera (Giống logic Tracker)
+					r.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+					r.CFrame = CFrame.new(r.Position, r.Position + flatLook)
 				end
 			end)
 		end
 	else
-		manualFlyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-		manualFlyBtn.Text = "FLY\nOFF"
+		orangeFlyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+		orangeFlyBtn.Text = "CAM\nOFF"
 		
-		if manualFlyConnection then
-			manualFlyConnection:Disconnect()
-			manualFlyConnection = nil
+		if orangeFlyConnection then 
+			orangeFlyConnection:Disconnect() 
+			orangeFlyConnection = nil 
 		end
 		
-		if manualFlyBv then manualFlyBv:Destroy() manualFlyBv = nil end
-		if manualFlyBg then manualFlyBg:Destroy() manualFlyBg = nil end
+		restorePhysicsIfNeeded()
+	end
+end)
+
+--======================================================================
+-- BỘ MÁY BAY MÀU TÍM (CHẾ ĐỘ CFRAME - DỊCH CHUYỂN TỨC THỜI CHỐNG TEAMER)
+--======================================================================
+purpleFlyBtn.MouseButton1Click:Connect(function()
+	isPurpleFlyEnabled = not isPurpleFlyEnabled
+	if isPurpleFlyEnabled then
+		purpleFlyBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 255)
+		purpleFlyBtn.Text = "TÍM\nON"
 		
 		local char = localPlayer.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		if hum then 
-			-- [SỬA ĐỔI]: Mở khóa trạng thái đi bộ để hoạt động bình thường khi tắt Fly
-			hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
-			hum:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
-			hum:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, true)
-			hum.PlatformStand = false 
-			hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+		
+		if hum then
+			Camera.CameraSubject = hum
 		end
+		
+		workspace.Gravity = 0
+		
+		if root and hum then
+			hum.PlatformStand = false
+			
+			purpleFlyConnection = RunService.RenderStepped:Connect(function(deltaTime)
+				local c = localPlayer.Character
+				local r = c and c:FindFirstChild("HumanoidRootPart")
+				local h = c and c:FindFirstChildOfClass("Humanoid")
+				
+				if r and h then
+					h:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+					h:SetStateEnabled(Enum.HumanoidStateType.Landed, false)
+					h:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, false)
+					h:ChangeState(Enum.HumanoidStateType.Freefall)
+					
+					-- Triệt tiêu hoàn toàn vận tốc vật lý để tránh giằng co với CFrame
+					r.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+					r.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+					
+					local moveDir = h.MoveDirection
+					local fSpeed = tonumber(flySpeedInput.Text) or 150
+					local nextPos = r.Position
+					
+					local flatLook = Vector3.new(Camera.CFrame.LookVector.X, 0, Camera.CFrame.LookVector.Z)
+					if flatLook.Magnitude < 0.01 then
+						flatLook = Vector3.new(Camera.CFrame.UpVector.X, 0, Camera.CFrame.UpVector.Z)
+					end
+					flatLook = flatLook.Unit
+					
+					if moveDir.Magnitude > 0 then
+						local flatCam = CFrame.lookAt(Vector3.zero, flatLook)
+						local rawInput = flatCam:VectorToObjectSpace(moveDir)
+						local flyDir = Camera.CFrame:VectorToWorldSpace(Vector3.new(rawInput.X, 0, rawInput.Z))
+						
+						nextPos = r.Position + (flyDir.Unit * fSpeed * deltaTime)
+					end
+					
+					-- Thiết lập trực tiếp CFrame vào vị trí tiếp theo (Cơ chế lôi kẻ địch)
+					r.CFrame = CFrame.new(nextPos, nextPos + flatLook)
+				end
+			end)
+		end
+	else
+		purpleFlyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+		purpleFlyBtn.Text = "TÍM\nOFF"
+		
+		if purpleFlyConnection then 
+			purpleFlyConnection:Disconnect() 
+			purpleFlyConnection = nil 
+		end
+		
+		restorePhysicsIfNeeded()
 	end
 end)
 
@@ -1034,7 +1226,7 @@ local function makeDraggable(frame, handle)
 	handle.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
-			if handle == actionBtn or handle == manualFlyBtn then isDraggingWidget = false end
+			if handle == actionBtn or handle == orangeFlyBtn or handle == purpleFlyBtn then isDraggingWidget = false end
 			dragStart = input.Position
 			startPos = frame.Position
 			
@@ -1048,7 +1240,7 @@ local function makeDraggable(frame, handle)
 		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 			dragInput = input
 			if dragging then
-				if handle == actionBtn or handle == manualFlyBtn then isDraggingWidget = true end
+				if handle == actionBtn or handle == orangeFlyBtn or handle == purpleFlyBtn then isDraggingWidget = true end
 				if handle == frame then lastSavedPosition = frame.Position end
 			end
 		end
@@ -1066,7 +1258,8 @@ end
 
 makeDraggable(mainFrame, mainFrame)
 makeDraggable(widgetFrame, actionBtn)
-makeDraggable(manualFlyWidget, manualFlyBtn)
+makeDraggable(orangeWidget, orangeFlyBtn)
+makeDraggable(purpleWidget, purpleFlyBtn)
 
 actionBtn.MouseButton1Up:Connect(function()
 	if not isDraggingWidget then
@@ -1096,7 +1289,11 @@ toggleBtn.MouseButton1Click:Connect(function()
 		flySpeedInput.Visible = true
 		heightModeBtn.Visible = true
 		directionModeBtn.Visible = true
+		
+		orangeCreateBtn.Visible = true
 		netModeBtn.Visible = true
+		purpleCreateBtn.Visible = true
+		
 		tanSatBtn.Visible = true
 		targetStatusLabel.Visible = true
 		titleLabel.Visible = true
@@ -1120,7 +1317,11 @@ toggleBtn.MouseButton1Click:Connect(function()
 		flySpeedInput.Visible = false
 		heightModeBtn.Visible = false
 		directionModeBtn.Visible = false
+		
+		orangeCreateBtn.Visible = false
 		netModeBtn.Visible = false
+		purpleCreateBtn.Visible = false
+		
 		tanSatBtn.Visible = false
 		targetStatusLabel.Visible = false
 		titleLabel.Visible = false
