@@ -54,12 +54,17 @@ local _G_velCheckValue = 2
 local _G_predCoeffValue = 1
 local isNoclipEnabled = false
 
+-- Biến chức năng mới Visual Server
+local isVisualServerEnabled = false
+local serverVisualPart = nil
+
 -- Biến UI Tracker
 local Toggle_ClassicTracker = nil
 local Toggle_NearTracker = nil
 local Toggle_OrangeFly = nil
 local Toggle_PurpleFly = nil
 local Toggle_Noclip = nil
+local Toggle_VisualServer = nil
 
 local Drop_HeightMode, Drop_DirMode, Drop_NetMode, Drop_CombatMode
 local Input_Speed, Input_Sides, Input_Dist, Input_Height, Input_Chase, Input_Pred, Input_Vel
@@ -91,10 +96,9 @@ local recordedVoidY = trackedVoidY
 local lastSafeY = 0
 local killBricksList = {}
 
+-- Biến lưu trữ thực thực thế liên kết vật lý (Anchor Attach)
 local originalCFrame = nil 
 local attachTimerThread = nil
-
--- Biến lưu trữ thực thực thế liên kết vật lý (Anchor Attach)
 local currentAnchorPart = nil
 local currentWeldConstraint = nil
 
@@ -550,9 +554,9 @@ local function getTargetInHorizontalRange()
 	
 	for _, p in pairs(Players:GetPlayers()) do
 		if p ~= localPlayer and p.Parent then
-			local tChar = p.Character
-			local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
-			local tHum = tChar and tChar:FindFirstChildOfClass("Humanoid")
+			local pChar = p.Character
+			local tRoot = pChar and pChar:FindFirstChild("HumanoidRootPart")
+			local tHum = pChar and pChar:FindFirstChildOfClass("Humanoid")
 			if tRoot and tHum and tHum.Health > 0 then
 				local currentDist = (myRoot.Position - tRoot.Position).Magnitude
 				if (tanSatMode == 1 or tanSatMode == 3) or currentDist <= _G_distanceValue then
@@ -587,7 +591,6 @@ local function startFlying(modeType)
 		end
 
 		if not selectedTargetPlayer or not selectedTargetPlayer.Parent then 
-			Rayfield:Notify({Title = "Hệ thống", Content = "LỖI: Chưa chọn mục tiêu từ Player List hoặc danh sách ghim!", Duration = 2})
 			isClassicTrackingActive = false
 			updateMiniGuiText()
 			return 
@@ -600,7 +603,6 @@ local function startFlying(modeType)
 			local detected = getTargetInHorizontalRange()
 			if detected then
 				selectedTargetPlayer = detected
-				Rayfield:Notify({Title = "Tracker gần", Content = "Đã tự động khóa: " .. detected.DisplayName, Duration = 2})
 			end
 		end
 	end
@@ -631,6 +633,10 @@ local function startFlying(modeType)
 	
 	if flyConnection then flyConnection:Disconnect() end
 	
+	-- Thiết lập bộ đếm số khung hình render độc lập cho cơ chế Dịch Chuyển Theo Khung Hình (Frame-by-Frame Tracking)
+	local frameCounter = 0
+	local currentSectorIndex = 0
+
 	flyConnection = RunService.RenderStepped:Connect(function(deltaTime)
         if isAttached then return end
 
@@ -673,7 +679,6 @@ local function startFlying(modeType)
 					local targetChar = selectedTargetPlayer.Character
 					local targetHum = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
 					if targetHum then Camera.CameraSubject = targetHum end
-					Rayfield:Notify({Title = "Tracker gần", Content = "Đã tự động khóa mục tiêu: " .. detected.DisplayName, Duration = 2})
 				end
 				return 
 			else
@@ -694,12 +699,7 @@ local function startFlying(modeType)
 							local targetChar = selectedTargetPlayer.Character
 							local targetHum = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
 							if targetHum then Camera.CameraSubject = targetHum end
-							Rayfield:Notify({Title = "Tracker gần", Content = "Tàn sát: Đã chuyển sang mục tiêu: " .. detected.DisplayName, Duration = 2})
-						else
-							Rayfield:Notify({Title = "Tracker gần", Content = "Mục tiêu đã chết, đang quét tìm mục tiêu mới gần đây...", Duration = 2})
 						end
-					else
-						Rayfield:Notify({Title = "Tracker gần", Content = "Mục tiêu đã chết, đang kích hoạt lại bay tìm kiếm...", Duration = 2})
 					end
 					return
 				end
@@ -836,55 +836,100 @@ local function startFlying(modeType)
 			
 			myRoot.AssemblyLinearVelocity = direction * chaseSpeed
 			myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-			myRoot.CFrame = CFrame.new(myRoot.Position, targetPositionBase)
+			myRoot.CFrame = CFrame.new(myRoot.Position, targetTargetPos)
 		else
-			myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-			myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-			settings().Network.IncomingReplicationLag = 0.12
-			
-			local userSpeed = _G_speedValue
 			local nextCFramePosition = Vector3.new(0,0,0)
 			
 			if selectedDirMode == 1 then
-				local angularVelocity = userSpeed / horizontalDist
-				currentAngle = (currentAngle + (angularVelocity * deltaTime)) % (math.pi * 2)
+				settings().Network.IncomingReplicationLag = 0
 				
 				local sides = _G_sidesValue
 				local targetX, targetZ
 				
 				if sides >= 3 then
+					-- [FIX HOÀN TOÀN THEO SỐ KHUNG HÌNH RENDER THỰC TẾ]
+					-- Sử dụng giá trị nhập từ GUI (lưu ở biến _G_speedValue) làm số lượng khung hình chờ (Ví dụ: Nhập 1 = Dịch chuyển nấc sau mỗi 1 khung hình).
+					local framesToWait = math.max(math.floor(_G_speedValue), 1)
+					frameCounter = frameCounter + 1
+					
+					if frameCounter >= framesToWait then
+						frameCounter = 0
+						-- Tịnh tiến tuần hoàn đúng 1 nấc đỉnh hình học duy nhất, triệt tiêu bỏ sót nấc khi lặp đa giác nhiều cạnh (>= 4)
+						currentSectorIndex = (currentSectorIndex + 1) % sides
+					end
+					
 					local sectorAngle = (math.pi * 2) / sides
-					local sectorIndex = math.floor(currentAngle / sectorAngle)
-					local angle1 = sectorIndex * sectorAngle
-					local angle2 = (sectorIndex + 1) * sectorAngle
+					local exactAngle = currentSectorIndex * sectorAngle
 					
-					local p1X = math.sin(angle1) * horizontalDist
-					local p1Z = math.cos(angle1) * horizontalDist
-					local p2X = math.sin(angle2) * horizontalDist
-					local p2Z = math.cos(angle2) * horizontalDist
-					
-					local progress = (currentAngle % sectorAngle) / sectorAngle
-					
-					targetX = targetPositionBase.X + (p1X + (p2X - p1X) * progress)
-					targetZ = targetPositionBase.Z + (p1Z + (p2Z - p1Z) * progress)
+					targetX = targetPositionBase.X + (math.sin(exactAngle) * horizontalDist)
+					targetZ = targetPositionBase.Z + (math.cos(exactAngle) * horizontalDist)
 				else
+					local angularVelocity = _G_speedValue / horizontalDist
+					currentAngle = (currentAngle - (angularVelocity * deltaTime)) % (math.pi * 2)
+					
 					targetX = targetPositionBase.X + (math.sin(currentAngle) * horizontalDist)
 					targetZ = targetPositionBase.Z + (math.cos(currentAngle) * horizontalDist)
 				end
 				
 				local targetY = targetPositionBase.Y + verticalDist 
 				nextCFramePosition = Vector3.new(targetX, targetY, targetZ)
+				
+				myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+				myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+				
+				myRoot.CFrame = CFrame.new(nextCFramePosition, targetPositionBase)
 			elseif selectedDirMode == 2 then
 				local backVector = -targetLookVector
 				nextCFramePosition = targetPositionBase + (backVector * horizontalDist) + Vector3.new(0, verticalDist, 0)
+				myRoot.AssemblyLinearVelocity = Vector3.zero
+				myRoot.AssemblyAngularVelocity = Vector3.zero
+				myRoot.CFrame = CFrame.new(nextCFramePosition, targetPositionBase)
+				settings().Network.IncomingReplicationLag = 0
 			else
 				nextCFramePosition = targetPositionBase + Vector3.new(0, verticalDist, 0)
+				myRoot.AssemblyLinearVelocity = Vector3.zero
+				myRoot.AssemblyAngularVelocity = Vector3.zero
+				myRoot.CFrame = CFrame.new(nextCFramePosition, targetPositionBase)
+				settings().Network.IncomingReplicationLag = 0
 			end
-			
-			myRoot.CFrame = CFrame.new(nextCFramePosition, targetPositionBase)
 		end
 	end)
 end
+
+-- ======================================================================
+-- VÒNG LẶP CHECK VISUAL SERVER-SIDE ĐỘC LẬP HOÀN TOÀN KHÔNG DÍNH BẢN THÂN
+-- ======================================================================
+RunService.Heartbeat:Connect(function()
+    if isVisualServerEnabled then
+        local char = localPlayer.Character
+        local myRoot = char and char:FindFirstChild("HumanoidRootPart")
+        if myRoot then
+            if not serverVisualPart or serverVisualPart.Parent ~= workspace then
+                serverVisualPart = Instance.new("Part")
+                serverVisualPart.Name = "ServerVisualPartHRP"
+                serverVisualPart.Size = myRoot.Size
+                serverVisualPart.Color = Color3.fromRGB(255, 0, 0)
+                serverVisualPart.Material = Enum.Material.Neon
+                serverVisualPart.CanCollide = false
+                serverVisualPart.Anchored = true
+                serverVisualPart.Transparency = 0.4
+                serverVisualPart.Parent = workspace
+            end
+            
+            local serverRootCFrame = myRoot.CFrame
+            pcall(function()
+                local currentPosition = myRoot.Position
+                local lookVector = myRoot.CFrame.LookVector
+                serverVisualPart.CFrame = CFrame.new(currentPosition, currentPosition + lookVector)
+            end)
+        end
+    else
+        if serverVisualPart then
+            serverVisualPart:Destroy()
+            serverVisualPart = nil
+        end
+    end
+end)
 
 RunService.Stepped:Connect(function()
     if not isNoclipEnabled then return end
@@ -899,55 +944,50 @@ RunService.Stepped:Connect(function()
 end)
 
 -- ======================================================================
--- BIẾN LƯU TRỮ VÀ LOGIC PHỤC VỤ CHO TAB KILL ALL (ĐÃ CHUYỂN HOÀN TOÀN SANG LOGIC FILE 2)
+-- BIẾN LƯU TRẠNG THÁI VÀ LOGIC PHỤC VỤ TAB KILL ALL
 -- ======================================================================
-local killAll_Delay = 1 --[cite: 2]
-local killAll_FirstDeadCount = 0 --[cite: 2]
-local killAll_LowHealthCount = 0 --[cite: 2]
+local killAll_Delay = 1
+local killAll_FirstDeadCount = 0
+local killAll_LowHealthCount = 0
 
 local isTouchFlingEnabled = false
 local touchFlingThread = nil
 local isAntiFlingEnabled = false
 
--- HÀM QUÉT TOÀN BỘ MỤC TIÊU SỐNG (100% TỪ LOGIC TRONG FILE 2)
-local function getAllLivingTargets() --[cite: 2]
-    local targets = {} --[cite: 2]
-    local myChar = localPlayer.Character --[cite: 2]
+local function getAllLivingTargets()
+    local targets = {}
+    local myChar = localPlayer.Character
 
-    -- Quét người chơi thực trong server[cite: 2]
-    for _, p in ipairs(Players:GetPlayers()) do --[cite: 2]
-        if p ~= localPlayer and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character:FindFirstChild("HumanoidRootPart") then --[cite: 2]
-            if p.Character.Humanoid.Health > 0 then --[cite: 2]
-                table.insert(targets, p.Character) --[cite: 2]
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= localPlayer and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character:FindFirstChild("HumanoidRootPart") then
+            if p.Character.Humanoid.Health > 0 then
+                table.insert(targets, p.Character)
             end
         end
     end
 
-    -- Quét NPC/Dummy ngoài Workspace gốc[cite: 2]
-    for _, child in ipairs(workspace:GetChildren()) do --[cite: 2]
-        if child:IsA("Model") and child:FindFirstChild("Humanoid") and child:FindFirstChild("HumanoidRootPart") then --[cite: 2]
-            if child ~= myChar and not Players:GetPlayerFromCharacter(child) and child.Humanoid.Health > 0 then --[cite: 2]
-                table.insert(targets, child) --[cite: 2]
+    for _, child in ipairs(workspace:GetChildren()) do
+        if child:IsA("Model") and child:FindFirstChild("Humanoid") and child:FindFirstChild("HumanoidRootPart") then
+            if child ~= myChar and not Players:GetPlayerFromCharacter(child) and child.Humanoid.Health > 0 then
+                table.insert(targets, child)
             end
         end
     end
 
-    -- Quét NPC/Dummy trong thư mục Characters đặc trưng của JJS[cite: 2]
-    local charactersFolder = workspace:FindFirstChild("Characters") --[cite: 2]
-    if charactersFolder then --[cite: 2]
-        for _, child in ipairs(charactersFolder:GetChildren()) do --[cite: 2]
-            if child:IsA("Model") and child:FindFirstChild("Humanoid") and child:FindFirstChild("HumanoidRootPart") then --[cite: 2]
-                if child ~= myChar and child.Humanoid.Health > 0 and not table.find(targets, child) then --[cite: 2]
-                    table.insert(targets, child) --[cite: 2]
+    local charactersFolder = workspace:FindFirstChild("Characters")
+    if charactersFolder then
+        for _, child in ipairs(charactersFolder:GetChildren()) do
+            if child:IsA("Model") and child:FindFirstChild("Humanoid") and child:FindFirstChild("HumanoidRootPart") then
+                if child ~= myChar and child.Humanoid.Health > 0 and not table.find(targets, child) then
+                    table.insert(targets, child)
                 end
             end
         end
     end
 
-    return targets --[cite: 2]
+    return targets
 end
 
--- Hàm hỗ trợ tính toán vị trí dịch chuyển dựa trên hướng chọn và khoảng cách
 local function getKillAllTargetCFrame(targetRoot)
     local distance = killAll_TeleportDistance
     local targetPos = targetRoot.Position
@@ -973,118 +1013,87 @@ end
 
 local killAllLoopConnection = nil
 
--- THUẬT TOÁN DỊCH CHUYỂN 3 GIAI ĐOẠN ĐẶC TRƯNG CỦA FILE 2 TRONG SINGLE THREAD
 local function runKillAllLoop()
-    ----------------------------------------------------
-    -- GIAI ĐOẠN 1: XỬ LÝ ƯU TIÊN ÍT MÁU (THẾ CHỖ ĐỘNG)[cite: 2]
-    ----------------------------------------------------
-    if killAll_LowHealthCount > 0 then --[cite: 2]
-        while killAllActive do --[cite: 2]
-            local allCurrentTargets = getAllLivingTargets() --[cite: 2]
-            if #allCurrentTargets == 0 then --[cite: 2]
-                break
-            end
+    if killAll_LowHealthCount > 0 then
+        while killAllActive do
+            local allCurrentTargets = getAllLivingTargets()
+            if #allCurrentTargets == 0 then break end
             
-            -- Sắp xếp toàn bộ mục tiêu theo lượng máu tăng dần (ít máu nhất đứng đầu)[cite: 2]
-            table.sort(allCurrentTargets, function(a, b) --[cite: 2]
-                return a.Humanoid.Health < b.Humanoid.Health --[cite: 2]
+            table.sort(allCurrentTargets, function(a, b)
+                return a.Humanoid.Health < b.Humanoid.Health
             end)
             
-            -- Trích xuất ra N mục tiêu ít máu nhất tại thời điểm hiện tại[cite: 2]
-            local lowHealthTargets = {} --[cite: 2]
-            for i = 1, math.min(killAll_LowHealthCount, #allCurrentTargets) do --[cite: 2]
-                table.insert(lowHealthTargets, allCurrentTargets[i]) --[cite: 2]
+            local lowHealthTargets = {}
+            for i = 1, math.min(killAll_LowHealthCount, #allCurrentTargets) do
+                table.insert(lowHealthTargets, allCurrentTargets[i])
             end
             
-            -- Dịch chuyển qua danh sách ít máu đã chọn[cite: 2]
-            for _, target in ipairs(lowHealthTargets) do --[cite: 2]
-                if not killAllActive then break end --[cite: 2]
-                
-                -- Kiểm tra lại xem mục tiêu có còn sống và hợp lệ không trước khi nhảy[cite: 2]
-                if target and target:FindFirstChild("Humanoid") and target:FindFirstChild("HumanoidRootPart") and target.Humanoid.Health > 0 then --[cite: 2]
-                    local myChar = localPlayer.Character --[cite: 2]
-                    if myChar and myChar:FindFirstChild("HumanoidRootPart") then --[cite: 2]
-                        -- Dịch chuyển theo khoảng cách và hướng chỉ định, hướng mặt vào mục tiêu
+            for _, target in ipairs(lowHealthTargets) do
+                if not killAllActive then break end
+                if target and target:FindFirstChild("Humanoid") and target:FindFirstChild("HumanoidRootPart") and target.Humanoid.Health > 0 then
+                    local myChar = localPlayer.Character
+                    if myChar and myChar:FindFirstChild("HumanoidRootPart") then
                         myChar.HumanoidRootPart.CFrame = getKillAllTargetCFrame(target.HumanoidRootPart)
                     end
-                    task.wait(killAll_Delay) --[cite: 2]
+                    task.wait(killAll_Delay)
                 end
             end
             
-            -- Nếu toàn bộ server không còn ai sống, bẻ gãy vòng lặp ít máu[cite: 2]
-            if #getAllLivingTargets() == 0 then --[cite: 2]
-                break
-            end
+            if #getAllLivingTargets() == 0 then break end
         end
     end
 
-    ----------------------------------------------------
-    -- GIAI ĐOẠN 2: XỬ LÝ DANH SÁCH MỤC TIÊU CHẾT ĐẦU (GẦN NHẤT)[cite: 2]
-    ----------------------------------------------------
-    local priorityTargets = {} --[cite: 2]
-    
-    if killAll_FirstDeadCount > 0 and killAllActive then --[cite: 2]
-        local allCurrentTargets = getAllLivingTargets() --[cite: 2]
-        local myChar = localPlayer.Character --[cite: 2]
-        local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart") --[cite: 2]
+    local priorityTargets = {}
+    if killAll_FirstDeadCount > 0 and killAllActive then
+        local allCurrentTargets = getAllLivingTargets()
+        local myChar = localPlayer.Character
+        local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
         
-        if myRoot then --[cite: 2]
-            -- Sắp xếp danh sách mục tiêu theo khoảng cách từ gần đến xa[cite: 2]
-            table.sort(allCurrentTargets, function(a, b) --[cite: 2]
-                local distA = (a.HumanoidRootPart.Position - myRoot.Position).Magnitude --[cite: 2]
-                local distB = (b.HumanoidRootPart.Position - myRoot.Position).Magnitude --[cite: 2]
-                return distA < distB --[cite: 2]
+        if myRoot then
+            table.sort(allCurrentTargets, function(a, b)
+                local distA = (a.HumanoidRootPart.Position - myRoot.Position).Magnitude
+                local distB = (b.HumanoidRootPart.Position - myRoot.Position).Magnitude
+                return distA < distB
             end)
         end
         
-        -- Lấy ra N mục tiêu gần nhất đưa vào danh sách ưu tiên cố định cho đến khi chết[cite: 2]
-        for i = 1, math.min(killAll_FirstDeadCount, #allCurrentTargets) do --[cite: 2]
-            table.insert(priorityTargets, allCurrentTargets[i]) --[cite: 2]
+        for i = 1, math.min(killAll_FirstDeadCount, #allCurrentTargets) do
+            table.insert(priorityTargets, allCurrentTargets[i])
         end
     end
     
-    if #priorityTargets > 0 and killAllActive then --[cite: 2]
-        while killAllActive do --[cite: 2]
-            local hasAnyoneAlive = false --[cite: 2]
-            
-            for _, target in ipairs(priorityTargets) do --[cite: 2]
-                if not killAllActive then break end --[cite: 2]
-                
-                if target and target:FindFirstChild("Humanoid") and target:FindFirstChild("HumanoidRootPart") and target.Humanoid.Health > 0 then --[cite: 2]
-                    hasAnyoneAlive = true --[cite: 2]
-                    local myChar = localPlayer.Character --[cite: 2]
-                    if myChar and myChar:FindFirstChild("HumanoidRootPart") then --[cite: 2]
+    if #priorityTargets > 0 and killAllActive then
+        while killAllActive do
+            local hasAnyoneAlive = false
+            for _, target in ipairs(priorityTargets) do
+                if not killAllActive then break end
+                if target and target:FindFirstChild("Humanoid") and target:FindFirstChild("HumanoidRootPart") and target.Humanoid.Health > 0 then
+                    hasAnyoneAlive = true
+                    local myChar = localPlayer.Character
+                    if myChar and myChar:FindFirstChild("HumanoidRootPart") then
                         myChar.HumanoidRootPart.CFrame = getKillAllTargetCFrame(target.HumanoidRootPart)
                     end
-                    task.wait(killAll_Delay) --[cite: 2]
+                    task.wait(killAll_Delay)
                 end
             end
-            
-            if not hasAnyoneAlive then --[cite: 2]
-                break
-            end
+            if not hasAnyoneAlive then break end
         end
     end
     
-    ----------------------------------------------------
-    -- GIAI ĐOẠN 3: DỊCH CHUYỂN ĐẾN TẤT CẢ MỌI NGƯỜI VÀ NPC KHÁC TRONG SERVER[cite: 2]
-    ----------------------------------------------------
-    while killAllActive do --[cite: 2]
-        local globalTargets = getAllLivingTargets() --[cite: 2]
-        
-        if #globalTargets == 0 then --[cite: 2]
-            task.wait(0.5) --[cite: 2]
+    while killAllActive do
+        local globalTargets = getAllLivingTargets()
+        if #globalTargets == 0 then
+            task.wait(0.5)
         end
         
-        for _, target in ipairs(globalTargets) do --[cite: 2]
-            if not killAllActive then break end --[cite: 2]
-            
-            if target and target:FindFirstChild("Humanoid") and target:FindFirstChild("HumanoidRootPart") and target.Humanoid.Health > 0 then --[cite: 2]
-                local myChar = localPlayer.Character --[cite: 2]
-                if myChar and myChar:FindFirstChild("HumanoidRootPart") then --[cite: 2]
+        for _, target in ipairs(globalTargets) do
+            if not killAllActive then break end
+            if target and target:FindFirstChild("Humanoid") and target:FindFirstChild("HumanoidRootPart") and target.Humanoid.Health > 0 then
+                local myChar = localPlayer.Character
+                if myChar and myChar:FindFirstChild("HumanoidRootPart") then
                     myChar.HumanoidRootPart.CFrame = getKillAllTargetCFrame(target.HumanoidRootPart)
                 end
-                task.wait(killAll_Delay) --[cite: 2]
+                task.wait(killAll_Delay)
             end
         end
     end
@@ -1095,9 +1104,7 @@ local function toggleKillAll(state)
 	if killAllActive then
 		killAllActionBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 		killAllActionBtn.Text = "KILL\nON"
-		Rayfield:Notify({Title = "Kill All", Content = "Dự án mới Kill All đã được kích hoạt!", Duration = 3})
 		
-		-- Ghi lại vị trí ban đầu trước khi dịch chuyển tấn công
 		local myChar = localPlayer.Character
 		local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 		if myRoot then
@@ -1105,18 +1112,16 @@ local function toggleKillAll(state)
 		end
 
 		if killAllLoopConnection then task.cancel(killAllLoopConnection) end
-		killAllLoopConnection = task.spawn(runKillAllLoop) --[cite: 2]
+		killAllLoopConnection = task.spawn(runKillAllLoop)
 	else
 		killAllActionBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 		killAllActionBtn.Text = "KILL\nOFF"
-		Rayfield:Notify({Title = "Kill All", Content = "Dự án mới Kill All đã tắt hoàn toàn.", Duration = 3})
 		
 		if killAllLoopConnection then
 			task.cancel(killAllLoopConnection)
 			killAllLoopConnection = nil
 		end
 
-		-- Thực hiện đưa nhân vật dịch chuyển quay lại vị trí ban đầu sau khi tắt
 		if killAllOriginalCFrame then
 			local myChar = localPlayer.Character
 			local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -1410,6 +1415,15 @@ Input_Vel = MainTab:CreateInput({
    Callback = function(Text) _G_velCheckValue = tonumber(Text) or 2 end,
 })
 
+MainTab:CreateSection("-visual server side")
+Toggle_VisualServer = MainTab:CreateToggle({
+   Name = "Visual Server (HRP Đỏ)",
+   CurrentValue = false,
+   Callback = function(Value)
+       isVisualServerEnabled = Value
+   end,
+})
+
 -- ======================================================================
 -- TAB: ONE SHOT
 -- ======================================================================
@@ -1421,14 +1435,12 @@ OneShotTab:CreateButton({
     Name = "Check Void",
     Callback = function()
         recordedVoidY = trackedVoidY
-        Rayfield:Notify({Title = "Check Void", Content = "Đã lưu tọa độ Y: " .. math.floor(recordedVoidY), Duration = 3})
     end,
 })
 OneShotTab:CreateButton({
     Name = "Check Kill Bricks",
     Callback = function()
         killBricksList = {}
-        local count = 0
         for _, part in ipairs(workspace:GetDescendants()) do
             if part:IsA("BasePart") then
                 local name = string.lower(part.Name)
@@ -1443,11 +1455,9 @@ OneShotTab:CreateButton({
                 end
                 if isKB then
                     table.insert(killBricksList, part)
-                    count = count + 1
                 end
             end
         end
-        Rayfield:Notify({Title = "Check Kill Bricks", Content = "Đã quét được " .. count .. " khối Kill Bricks!", Duration = 3})
     end,
 })
 
@@ -1519,7 +1529,7 @@ ToggleKBUI = OneShotTab:CreateToggle({
 })
 
 -- ======================================================================
--- TAB: KILL ALL (DỰ ÁN MỚI) (GIỮ NGUYÊN GIAO DIỆN CHỈ THAY ĐỔI CƠ CHẾ LOGIC)
+-- TAB: KILL ALL
 -- ======================================================================
 local KillAllTab = Window:CreateTab("Kill All", 4483362458)
 local Toggle_KillAllMiniVis
@@ -1614,7 +1624,6 @@ KillAllTab:CreateInput({
 	end,
 })
 
--- THÊM 2 MODE Ở DƯỚI ĐÁY CÙNG CỦA PAGE KILL ALL NHƯ YÊU CẦU
 KillAllTab:CreateInput({
 	Name = "Khoảng cách dịch chuyển",
 	PlaceholderText = "Mặc định: 1.5",
@@ -1671,13 +1680,8 @@ PlayerDropdown = PlayerTab:CreateDropdown({
       local targetName = type(Option) == "table" and Option[1] or Option
       local p = nameToPlayer[targetName]
       if p then
-         if isNearTrackingActive then
-            Rayfield:Notify({Title = "Thông báo", Content = "Bạn đang bật Tracker mục tiêu gần! Danh sách này chỉ dùng cho bản Cổ Điển.", Duration = 3})
-            return
-         end
-         
+         if isNearTrackingActive then return end
          selectedTargetPlayer = p
-         Rayfield:Notify({Title = "Mục tiêu hiện tại", Content = "Đã chọn: " .. p.DisplayName, Duration = 2})
          if isClassicTrackingActive then startFlying("Classic") end
       end
    end,
@@ -1701,7 +1705,6 @@ PinnedDropdown = PlayerTab:CreateDropdown({
         updatePinnedOrder()
         
         if hasPinnedPlayers() then
-            Rayfield:Notify({Title = "Ghim mục tiêu", Content = "Đã cập nhật danh sách ghim (" .. #pinnedOrder .. " người)", Duration = 2})
             if isClassicTrackingActive then
                 if not selectedTargetPlayer or not pinnedPlayers[selectedTargetPlayer] then
                     selectedTargetPlayer = pinnedOrder[currentPinnedIndex]
@@ -1717,7 +1720,6 @@ PlayerTab:CreateButton({
    Name = "Làm mới danh sách (Refresh)",
    Callback = function()
       updatePlayers()
-      Rayfield:Notify({Title = "Hệ thống", Content = "Đã cập nhật danh sách người chơi mới nhất!", Duration = 2})
    end,
 })
 
@@ -1782,12 +1784,7 @@ SettingsTab:CreateButton({
 		   killAllDir = killAll_DirectionMode
        }
        if writefile then
-           local success = pcall(function() writefile(fullSaveFileName, HttpService:JSONEncode(config)) end)
-           if success then
-               Rayfield:Notify({Title = "Thành công", Content = "Đã lưu toàn bộ thông số và GUI an toàn!", Duration = 3})
-           else
-               Rayfield:Notify({Title = "Lỗi", Content = "Không thể ghi dữ liệu cấu hình.", Duration = 3})
-           end
+           pcall(function() writefile(fullSaveFileName, HttpService:JSONEncode(config)) end)
        end
    end,
 })
@@ -1841,8 +1838,6 @@ SettingsTab:CreateButton({
                     targetModeIndex = 3 
                     stopFlying()
                     updateAttachment()
-                    
-                    Rayfield:Notify({Title = "Thành công", Content = "Đã Load và áp dụng cho toàn bộ GUI!", Duration = 3})
                 end
             end
         end
