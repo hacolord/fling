@@ -1774,7 +1774,18 @@ SettingsTab:CreateButton({
 		   killAllActive = killAllActive,
 		   killAllMiniVis = killAllWidget.Visible,
 		   killAllDist = killAll_TeleportDistance,
-		   killAllDir = killAll_DirectionMode
+		   killAllDir = killAll_DirectionMode,
+
+           -- Lưu vị trí (Position) của toàn bộ các Mini GUI trên màn hình
+           widgetPositions = {
+               classic = {classicWidget.Position.X.Scale, classicWidget.Position.X.Offset, classicWidget.Position.Y.Scale, classicWidget.Position.Y.Offset},
+               near = {nearWidget.Position.X.Scale, nearWidget.Position.X.Offset, nearWidget.Position.Y.Scale, nearWidget.Position.Y.Offset},
+               orange = {orangeWidget.Position.X.Scale, orangeWidget.Position.X.Offset, orangeWidget.Position.Y.Scale, orangeWidget.Position.Y.Offset},
+               purple = {purpleWidget.Position.X.Scale, purpleWidget.Position.X.Offset, purpleWidget.Position.Y.Scale, purpleWidget.Position.Y.Offset},
+               killAll = {killAllWidget.Position.X.Scale, killAllWidget.Position.X.Offset, killAllWidget.Position.Y.Scale, killAllWidget.Position.Y.Offset},
+               void = {voidWidget.Position.X.Scale, voidWidget.Position.X.Offset, voidWidget.Position.Y.Scale, voidWidget.Position.Y.Offset},
+               kb = {kbWidget.Position.X.Scale, kbWidget.Position.X.Offset, kbWidget.Position.Y.Scale, kbWidget.Position.Y.Offset}
+           }
        }
        if writefile then
            pcall(function() writefile(fullSaveFileName, HttpService:JSONEncode(config)) end)
@@ -1825,6 +1836,18 @@ SettingsTab:CreateButton({
 					
                     if PinnedDropdown and parsed.pinnedList then
                         PinnedDropdown:Set(parsed.pinnedList)
+                    end
+
+                    -- Khôi phục vị trí (Position) của toàn bộ các Mini GUI đã lưu
+                    if parsed.widgetPositions then
+                        local wp = parsed.widgetPositions
+                        if wp.classic then classicWidget.Position = UDim2.new(wp.classic[1], wp.classic[2], wp.classic[3], wp.classic[4]) end
+                        if wp.near then nearWidget.Position = UDim2.new(wp.near[1], wp.near[2], wp.near[3], wp.near[4]) end
+                        if wp.orange then orangeWidget.Position = UDim2.new(wp.orange[1], wp.orange[2], wp.orange[3], wp.orange[4]) end
+                        if wp.purple then purpleWidget.Position = UDim2.new(wp.purple[1], wp.purple[2], wp.purple[3], wp.purple[4]) end
+                        if wp.killAll then killAllWidget.Position = UDim2.new(wp.killAll[1], wp.killAll[2], wp.killAll[3], wp.killAll[4]) end
+                        if wp.void then voidWidget.Position = UDim2.new(wp.void[1], wp.void[2], wp.void[3], wp.void[4]) end
+                        if wp.kb then kbWidget.Position = UDim2.new(wp.kb[1], wp.kb[2], wp.kb[3], wp.kb[4]) end
                     end
 
                     isAttached = false
