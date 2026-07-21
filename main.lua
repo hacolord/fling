@@ -633,10 +633,6 @@ local function startFlying(modeType)
 	
 	if flyConnection then flyConnection:Disconnect() end
 	
-	-- Thiết lập bộ đếm số khung hình render độc lập cho cơ chế Dịch Chuyển Theo Khung Hình (Frame-by-Frame Tracking)
-	local frameCounter = 0
-	local currentSectorIndex = 0
-
 	flyConnection = RunService.RenderStepped:Connect(function(deltaTime)
         if isAttached then return end
 
@@ -838,6 +834,7 @@ local function startFlying(modeType)
 			myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
 			myRoot.CFrame = CFrame.new(myRoot.Position, targetTargetPos)
 		else
+			local teleportSpeed = _G_speedValue
 			local nextCFramePosition = Vector3.new(0,0,0)
 			
 			if selectedDirMode == 1 then
@@ -847,24 +844,20 @@ local function startFlying(modeType)
 				local targetX, targetZ
 				
 				if sides >= 3 then
-					-- [FIX HOÀN TOÀN THEO SỐ KHUNG HÌNH RENDER THỰC TẾ]
-					-- Sử dụng giá trị nhập từ GUI (lưu ở biến _G_speedValue) làm số lượng khung hình chờ (Ví dụ: Nhập 1 = Dịch chuyển nấc sau mỗi 1 khung hình).
-					local framesToWait = math.max(math.floor(_G_speedValue), 1)
-					frameCounter = frameCounter + 1
-					
-					if frameCounter >= framesToWait then
-						frameCounter = 0
-						-- Tịnh tiến tuần hoàn đúng 1 nấc đỉnh hình học duy nhất, triệt tiêu bỏ sót nấc khi lặp đa giác nhiều cạnh (>= 4)
-						currentSectorIndex = (currentSectorIndex + 1) % sides
-					end
-					
+					-- [FIX ĐỒNG BỘ GÓC CẠNH TỐC ĐỘ CAO]
+					-- Ép bước nhảy góc tăng theo chu kỳ đếm đỉnh hình học thay vì biến đổi vô cấp theo deltaTime để server không bị loạn gói tin dữ liệu truyền tải.
 					local sectorAngle = (math.pi * 2) / sides
-					local exactAngle = currentSectorIndex * sectorAngle
+					local angularVelocity = teleportSpeed / horizontalDist
+					
+					currentAngle = (currentAngle - (angularVelocity * deltaTime)) % (math.pi * 2)
+					
+					local currentSector = math.floor(currentAngle / sectorAngle)
+					local exactAngle = currentSector * sectorAngle
 					
 					targetX = targetPositionBase.X + (math.sin(exactAngle) * horizontalDist)
 					targetZ = targetPositionBase.Z + (math.cos(exactAngle) * horizontalDist)
 				else
-					local angularVelocity = _G_speedValue / horizontalDist
+					local angularVelocity = teleportSpeed / horizontalDist
 					currentAngle = (currentAngle - (angularVelocity * deltaTime)) % (math.pi * 2)
 					
 					targetX = targetPositionBase.X + (math.sin(currentAngle) * horizontalDist)
