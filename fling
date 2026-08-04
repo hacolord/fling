@@ -1,14 +1,13 @@
--- JJS Target Fling Script (Only Fling Logic)
+-- JJS Target Fling Script (Integrated with GUI Logic)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
--- Cấu hình Fling
-local FLING_TIME = 1.5
-local flingPower = 1000000000
+_G.HubState = _G.HubState or {}
+_G.HubLogic = _G.HubLogic or {}
 
-local isFlinging = false
+_G.HubState.isFlingRunning = false
 
 -- ==================== TÌM MỤC TIÊU GẦN NHẤT ====================
 local function getClosestTarget()
@@ -52,17 +51,14 @@ local function getClosestTarget()
 end
 
 -- ==================== FLING LOGIC ====================
-local function doFling()
-    if isFlinging then return end
-    
+local function doFlingOnce()
     local targetChar = getClosestTarget()
-    if not targetChar then return end
+    if not targetChar then return false end
 
     local char = LocalPlayer.Character
     local myHrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not myHrp then return end
+    if not myHrp then return false end
 
-    isFlinging = true
     local originalCFrame = myHrp.CFrame
 
     local targetParts = {}
@@ -72,7 +68,7 @@ local function doFling()
         end
     end
 
-    if #targetParts == 0 then isFlinging = false return end
+    if #targetParts == 0 then return false end
 
     local noclipConn = RunService.Stepped:Connect(function()
         if char then
@@ -84,17 +80,22 @@ local function doFling()
         end
     end)
 
+    local flingPower = _G.HubState.flingPower or 1000000000
+    local flingVelocity = _G.HubState.flingVelocity or 1000000000
+    local flingTime = _G.HubState.flingTime or 1
+
     local bav = Instance.new("BodyAngularVelocity")
     bav.Name = "MaxFlingRotator"
     bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-    bav.AngularVelocity = Vector3.new(flingPower, flingPower, flingPower)
+    bav.AngularVelocity = Vector3.new(flingVelocity, flingVelocity, flingVelocity)
     bav.Parent = myHrp
 
     local startTime = tick()
+    local done = false
 
     local heartbeatConn
     heartbeatConn = RunService.Heartbeat:Connect(function()
-        if tick() - startTime >= FLING_TIME or not targetChar or not targetChar.Parent then
+        if tick() - startTime >= flingTime or not targetChar or not targetChar.Parent or not _G.HubState.isFlingActive then
             heartbeatConn:Disconnect()
             noclipConn:Disconnect()
             if bav then bav:Destroy() end
@@ -102,7 +103,7 @@ local function doFling()
             myHrp.AssemblyLinearVelocity = Vector3.zero
             myHrp.AssemblyAngularVelocity = Vector3.zero
             myHrp.CFrame = originalCFrame
-            isFlinging = false
+            done = true
             return
         end
 
@@ -123,7 +124,25 @@ local function doFling()
             end
         end
     end)
+
+    while not done do
+        task.wait()
+    end
+    return true
 end
 
--- Kích hoạt Fling
-doFling()
+-- TỰ ĐỘNG LẶP LẠI FLING KHI MINIGUI FLING CÒN BẬT
+_G.HubLogic.StartFlingLoop = function()
+    if _G.HubState.isFlingRunning then return end
+    _G.HubState.isFlingRunning = true
+
+    task.spawn(function()
+        while _G.HubState.isFlingActive do
+            local success = doFlingOnce()
+            if not success then
+                task.wait(0.1)
+            end
+        end
+        _G.HubState.isFlingRunning = false
+    end)
+end
