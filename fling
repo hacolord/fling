@@ -1,0 +1,129 @@
+-- JJS Target Fling Script (Only Fling Logic)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+-- Cấu hình Fling
+local FLING_TIME = 1.5
+local flingPower = 1000000000
+
+local isFlinging = false
+
+-- ==================== TÌM MỤC TIÊU GẦN NHẤT ====================
+local function getClosestTarget()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
+    
+    local myPos = char.HumanoidRootPart.Position
+    local closestTarget = nil
+    local minDist = math.huge
+
+    -- Quét người chơi khác
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local humanoid = p.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                local dist = (myPos - p.Character.HumanoidRootPart.Position).Magnitude
+                if dist < minDist then
+                    minDist = dist
+                    closestTarget = p.Character
+                end
+            end
+        end
+    end
+
+    -- Quét NPC Dummy
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and string.lower(obj.Name) == "dummy" and obj ~= char then
+            local hrp = obj:FindFirstChild("HumanoidRootPart")
+            local humanoid = obj:FindFirstChildOfClass("Humanoid")
+            if hrp and humanoid and humanoid.Health > 0 then
+                local dist = (myPos - hrp.Position).Magnitude
+                if dist < minDist then
+                    minDist = dist
+                    closestTarget = obj
+                end
+            end
+        end
+    end
+
+    return closestTarget
+end
+
+-- ==================== FLING LOGIC ====================
+local function doFling()
+    if isFlinging then return end
+    
+    local targetChar = getClosestTarget()
+    if not targetChar then return end
+
+    local char = LocalPlayer.Character
+    local myHrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not myHrp then return end
+
+    isFlinging = true
+    local originalCFrame = myHrp.CFrame
+
+    local targetParts = {}
+    for _, part in pairs(targetChar:GetChildren()) do
+        if part:IsA("BasePart") then
+            table.insert(targetParts, part)
+        end
+    end
+
+    if #targetParts == 0 then isFlinging = false return end
+
+    local noclipConn = RunService.Stepped:Connect(function()
+        if char then
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end)
+
+    local bav = Instance.new("BodyAngularVelocity")
+    bav.Name = "MaxFlingRotator"
+    bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    bav.AngularVelocity = Vector3.new(flingPower, flingPower, flingPower)
+    bav.Parent = myHrp
+
+    local startTime = tick()
+
+    local heartbeatConn
+    heartbeatConn = RunService.Heartbeat:Connect(function()
+        if tick() - startTime >= FLING_TIME or not targetChar or not targetChar.Parent then
+            heartbeatConn:Disconnect()
+            noclipConn:Disconnect()
+            if bav then bav:Destroy() end
+
+            myHrp.AssemblyLinearVelocity = Vector3.zero
+            myHrp.AssemblyAngularVelocity = Vector3.zero
+            myHrp.CFrame = originalCFrame
+            isFlinging = false
+            return
+        end
+
+        for i = 1, #targetParts do
+            local part = targetParts[i]
+            if part and part.Parent then
+                myHrp.CFrame = part.CFrame * CFrame.Angles(
+                    math.rad(math.random(-180, 180)), 
+                    math.rad(math.random(-180, 180)), 
+                    math.rad(math.random(-180, 180))
+                )
+                
+                myHrp.AssemblyLinearVelocity = Vector3.new(
+                    math.random(-flingPower, flingPower),
+                    flingPower,
+                    math.random(-flingPower, flingPower)
+                )
+            end
+        end
+    end)
+end
+
+-- Kích hoạt Fling
+doFling()
