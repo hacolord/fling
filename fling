@@ -57,6 +57,7 @@ local function doFlingOnce()
 
     local char = LocalPlayer.Character
     local myHrp = char and char:FindFirstChild("HumanoidRootPart")
+    local myHumanoid = char and char:FindFirstChildOfClass("Humanoid")
     if not myHrp then return false end
 
     local originalCFrame = myHrp.CFrame
@@ -93,6 +94,8 @@ local function doFlingOnce()
     local startTime = tick()
     local done = false
 
+    local targetHumanoid = targetChar:FindFirstChildOfClass("Humanoid")
+
     local heartbeatConn
     heartbeatConn = RunService.Heartbeat:Connect(function()
         if tick() - startTime >= flingTime or not targetChar or not targetChar.Parent or not _G.HubState.isFlingActive then
@@ -107,6 +110,15 @@ local function doFlingOnce()
             return
         end
 
+        -- Ép trạng thái Physics/Freefall liên tục để phá vỡ trạng thái đứng yên/bám đất của đối phương và bản thân
+        if myHumanoid then
+            myHumanoid:ChangeState(Enum.HumanoidStateType.Physics)
+        end
+        if targetHumanoid then
+            targetHumanoid:ChangeState(Enum.HumanoidStateType.Physics)
+            targetHumanoid.Sit = false
+        end
+
         for i = 1, #targetParts do
             local part = targetParts[i]
             if part and part.Parent then
@@ -116,7 +128,13 @@ local function doFlingOnce()
                     math.rad(math.random(-180, 180))
                 )
                 
+                -- Luôn gán lực phóng vọt cực đại lên không trung bất kể kẻ địch có văng hay không
                 myHrp.AssemblyLinearVelocity = Vector3.new(
+                    math.random(-flingPower, flingPower),
+                    flingPower,
+                    math.random(-flingPower, flingPower)
+                )
+                myHrp.Velocity = Vector3.new(
                     math.random(-flingPower, flingPower),
                     flingPower,
                     math.random(-flingPower, flingPower)
