@@ -94,6 +94,7 @@ local function doFlingOnce()
     local startTime = tick()
     local done = false
 
+    local toggle = false
     local heartbeatConn
     heartbeatConn = RunService.Heartbeat:Connect(function()
         if tick() - startTime >= flingTime or not targetChar or not targetChar.Parent or not _G.HubState.isFlingActive then
@@ -108,21 +109,23 @@ local function doFlingOnce()
             return
         end
 
-        for i = 1, #targetParts do
-            local part = targetParts[i]
-            if part and part.Parent then
-                myHrp.CFrame = part.CFrame * CFrame.Angles(
-                    math.rad(math.random(-180, 180)), 
-                    math.rad(math.random(-180, 180)), 
-                    math.rad(math.random(-180, 180))
-                )
-                
-                myHrp.AssemblyLinearVelocity = Vector3.new(
-                    math.random(-flingPower, flingPower),
-                    flingPower,
-                    math.random(-flingPower, flingPower)
-                )
-            end
+        toggle = not toggle
+        local offsetOffsetY = toggle and 2.5 or -2.5
+
+        local targetHrp = targetChar:FindFirstChild("HumanoidRootPart") or targetParts[1]
+        if targetHrp and targetHrp.Parent then
+            -- Dịch chuyển lên xuống cực nhanh xung quanh mục tiêu tạo dư ảnh + va chạm xoay
+            myHrp.CFrame = targetHrp.CFrame * CFrame.new(0, offsetOffsetY, 0) * CFrame.Angles(
+                math.rad(math.random(-180, 180)), 
+                math.rad(math.random(-180, 180)), 
+                math.rad(math.random(-180, 180))
+            )
+            
+            myHrp.AssemblyLinearVelocity = Vector3.new(
+                toggle and flingPower or -flingPower,
+                flingPower,
+                toggle and flingPower or -flingPower
+            )
         end
     end)
 
