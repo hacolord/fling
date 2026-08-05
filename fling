@@ -71,12 +71,13 @@ local function doFlingOnce()
 
     if #targetParts == 0 then return false end
 
+    -- Bật CanCollide = true trên nhân vật để đảm bảo sinh ra va chạm vật lý thực sự khi chạm vào kẻ thù
     local noclipConn = RunService.Stepped:Connect(function()
         if char then
             for _, part in pairs(char:GetDescendants()) do
                 if part:IsA("BasePart") then
-                    part.CanCollide = false
-                    part.CustomPhysicalProperties = PhysicalProperties.new(100, 0, 0, 0, 0)
+                    part.CanCollide = true
+                    part.CustomPhysicalProperties = PhysicalProperties.new(100, 100, 100, 100, 100)
                 end
             end
         end
@@ -133,13 +134,10 @@ local function doFlingOnce()
                     math.rad(math.random(-180, 180))
                 )
                 
-                -- Truyền lực xoay/văng mạnh sang mục tiêu, đồng thời triệt tiêu vận tốc tích tụ của bản thân để không bị bay lên trời
+                -- Tạo va chạm trực tiếp với vận tốc góc/góc xoay siêu tốc để truyền động lượng sang mục tiêu
                 myHrp.AssemblyLinearVelocity = velVector
                 myHrp.Velocity = velVector
                 myHrp.AssemblyAngularVelocity = Vector3.new(flingVelocity, flingVelocity, flingVelocity)
-
-                -- Ép trực tiếp vận tốc văng lên mục tiêu
-                part.AssemblyLinearVelocity = Vector3.new(math.random(-flingPower, flingPower), flingPower, math.random(-flingPower, flingPower))
             end
         end
     end)
