@@ -76,6 +76,7 @@ local function doFlingOnce()
             for _, part in pairs(char:GetDescendants()) do
                 if part:IsA("BasePart") then
                     part.CanCollide = false
+                    part.CustomPhysicalProperties = PhysicalProperties.new(100, 0, 0, 0, 0)
                 end
             end
         end
@@ -96,6 +97,7 @@ local function doFlingOnce()
 
     local targetHumanoid = targetChar:FindFirstChildOfClass("Humanoid")
 
+    local toggleVal = true
     local heartbeatConn
     heartbeatConn = RunService.Heartbeat:Connect(function()
         if tick() - startTime >= flingTime or not targetChar or not targetChar.Parent or not _G.HubState.isFlingActive then
@@ -119,26 +121,25 @@ local function doFlingOnce()
             targetHumanoid.Sit = false
         end
 
+        toggleVal = not toggleVal
+        local velVector = toggleVal and Vector3.new(flingPower, flingPower, flingPower) or Vector3.new(-flingPower, flingPower, -flingPower)
+
         for i = 1, #targetParts do
             local part = targetParts[i]
             if part and part.Parent then
-                myHrp.CFrame = part.CFrame * CFrame.Angles(
+                myHrp.CFrame = part.CFrame * CFrame.new(math.random(-1, 1), math.random(-1, 1), math.random(-1, 1)) * CFrame.Angles(
                     math.rad(math.random(-180, 180)), 
                     math.rad(math.random(-180, 180)), 
                     math.rad(math.random(-180, 180))
                 )
                 
-                -- Luôn gán lực phóng vọt cực đại lên không trung bất kể kẻ địch có văng hay không
-                myHrp.AssemblyLinearVelocity = Vector3.new(
-                    math.random(-flingPower, flingPower),
-                    flingPower,
-                    math.random(-flingPower, flingPower)
-                )
-                myHrp.Velocity = Vector3.new(
-                    math.random(-flingPower, flingPower),
-                    flingPower,
-                    math.random(-flingPower, flingPower)
-                )
+                -- Truyền lực xoay/văng mạnh sang mục tiêu, đồng thời triệt tiêu vận tốc tích tụ của bản thân để không bị bay lên trời
+                myHrp.AssemblyLinearVelocity = velVector
+                myHrp.Velocity = velVector
+                myHrp.AssemblyAngularVelocity = Vector3.new(flingVelocity, flingVelocity, flingVelocity)
+
+                -- Ép trực tiếp vận tốc văng lên mục tiêu
+                part.AssemblyLinearVelocity = Vector3.new(math.random(-flingPower, flingPower), flingPower, math.random(-flingPower, flingPower))
             end
         end
     end)
@@ -146,6 +147,15 @@ local function doFlingOnce()
     while not done do
         task.wait()
     end
+
+    -- Khôi phục vị trí ban đầu và khóa chặt bản thân đứng an toàn dưới đất
+    if myHrp then
+        myHrp.AssemblyLinearVelocity = Vector3.zero
+        myHrp.AssemblyAngularVelocity = Vector3.zero
+        myHrp.Velocity = Vector3.zero
+        myHrp.CFrame = originalCFrame
+    end
+
     return true
 end
 
