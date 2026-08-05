@@ -71,13 +71,11 @@ local function doFlingOnce()
 
     if #targetParts == 0 then return false end
 
-    -- Bật CanCollide = true trên nhân vật để đảm bảo sinh ra va chạm vật lý thực sự khi chạm vào kẻ thù
     local noclipConn = RunService.Stepped:Connect(function()
         if char then
             for _, part in pairs(char:GetDescendants()) do
                 if part:IsA("BasePart") then
-                    part.CanCollide = true
-                    part.CustomPhysicalProperties = PhysicalProperties.new(100, 100, 100, 100, 100)
+                    part.CanCollide = false
                 end
             end
         end
@@ -96,9 +94,6 @@ local function doFlingOnce()
     local startTime = tick()
     local done = false
 
-    local targetHumanoid = targetChar:FindFirstChildOfClass("Humanoid")
-
-    local toggleVal = true
     local heartbeatConn
     heartbeatConn = RunService.Heartbeat:Connect(function()
         if tick() - startTime >= flingTime or not targetChar or not targetChar.Parent or not _G.HubState.isFlingActive then
@@ -113,31 +108,20 @@ local function doFlingOnce()
             return
         end
 
-        -- Ép trạng thái Physics/Freefall liên tục để phá vỡ trạng thái đứng yên/bám đất của đối phương và bản thân
-        if myHumanoid then
-            myHumanoid:ChangeState(Enum.HumanoidStateType.Physics)
-        end
-        if targetHumanoid then
-            targetHumanoid:ChangeState(Enum.HumanoidStateType.Physics)
-            targetHumanoid.Sit = false
-        end
-
-        toggleVal = not toggleVal
-        local velVector = toggleVal and Vector3.new(flingPower, flingPower, flingPower) or Vector3.new(-flingPower, flingPower, -flingPower)
-
         for i = 1, #targetParts do
             local part = targetParts[i]
             if part and part.Parent then
-                myHrp.CFrame = part.CFrame * CFrame.new(math.random(-1, 1), math.random(-1, 1), math.random(-1, 1)) * CFrame.Angles(
+                myHrp.CFrame = part.CFrame * CFrame.Angles(
                     math.rad(math.random(-180, 180)), 
                     math.rad(math.random(-180, 180)), 
                     math.rad(math.random(-180, 180))
                 )
                 
-                -- Tạo va chạm trực tiếp với vận tốc góc/góc xoay siêu tốc để truyền động lượng sang mục tiêu
-                myHrp.AssemblyLinearVelocity = velVector
-                myHrp.Velocity = velVector
-                myHrp.AssemblyAngularVelocity = Vector3.new(flingVelocity, flingVelocity, flingVelocity)
+                myHrp.AssemblyLinearVelocity = Vector3.new(
+                    math.random(-flingPower, flingPower),
+                    flingPower,
+                    math.random(-flingPower, flingPower)
+                )
             end
         end
     end)
@@ -146,12 +130,17 @@ local function doFlingOnce()
         task.wait()
     end
 
-    -- Khôi phục vị trí ban đầu và khóa chặt bản thân đứng an toàn dưới đất
-    if myHrp then
+    -- Đưa nhân vật về trạng thái hoàn toàn bình thường, triệt tiêu mọi lực quán tính nảy
+    if char and myHrp then
         myHrp.AssemblyLinearVelocity = Vector3.zero
         myHrp.AssemblyAngularVelocity = Vector3.zero
         myHrp.Velocity = Vector3.zero
+        myHrp.RotVelocity = Vector3.zero
         myHrp.CFrame = originalCFrame
+        
+        if myHumanoid then
+            myHumanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+        end
     end
 
     return true
